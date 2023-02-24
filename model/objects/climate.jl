@@ -58,8 +58,12 @@ function compute_emission_indices!(
     climate::Climate,
     t_index::Int64
 )
-    climate.em_index .= compute_index(climate.carbon_emissions, t_index)
-    climate.em_index_cp .= compute_index(climate.carbon_emissions_cp, t_index)
-    climate.em_index_kp .= compute_index(climate.carbon_emissions_kp, t_index)
-    climate.em_index_ep .= compute_index(climate.carbon_emissions_ep, t_index)
+    try
+        climate.em_index .= compute_index(climate.carbon_emissions, t_index)
+        climate.em_index_cp .= compute_index(climate.carbon_emissions_cp, t_index)
+        climate.em_index_kp .= compute_index(climate.carbon_emissions_kp, t_index)
+        climate.em_index_ep .= compute_index(climate.carbon_emissions_ep, t_index)
+    catch
+        nothing
+    end
 end

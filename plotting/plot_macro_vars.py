@@ -578,24 +578,45 @@ def plot_emissions(df:pd.DataFrame, t_warmup:int=300, t_cutoff:int=200):
 
     T = range(len(df.em_index))
 
-    fig, ax = plt.subplots(1, 2, figsize=(8,4))
+    fig, [[ax0, ax1], [ax2, ax3]] = plt.subplots(2, 2, figsize=(8, 6))
     fig.suptitle('Carbon Emissions')
 
-    ax[0].set_title('CO$_2$ emissions index')
-    ax[0].plot(T, df.em_index, label='$c^{total}_t$')
-    ax[0].plot(T, df.em_index_cp, label='$c^{cp}_t$')
-    ax[0].plot(T[t_cutoff:], df.em_index_kp[t_cutoff:], label='$c^{kp}_t$')
-    ax[0].plot(T, df.em_index_ep, label='$c^{ep}_t$')
-    ax[0].axvline(t_warmup, color='black', linestyle='dotted')
-    ax[0].set_xlabel('time')
-    ax[0].set_ylabel('index ($t_{warmup}=100$)')
-    ax[0].legend()
+    ax0.set_title('CO$_2$ emissions total')
+    ax0.plot(T, df.carbon_emissions, label='$c^{total}_t$')
+    ax0.plot(T, df.carbon_emissions_cp, label='$c^{cp}_t$')
+    ax0.plot(T[t_cutoff:], df.carbon_emissions_kp[t_cutoff:], label='$c^{kp}_t$')
+    ax0.plot(T, df.carbon_emissions_ep, label='$c^{ep}_t$')
+    ax0.axvline(t_warmup, color='black', linestyle='dotted')
+    ax0.set_xlabel('time')
+    ax0.set_ylabel('carbon units')
+    ax0.legend()
 
-    ax[1].set_title('percentage CO$_2$ emissions from energy')
-    ax[1].plot(T, df.energy_percentage)
-    ax[1].axvline(t_warmup, color='black', linestyle='dotted')
+    ax1.set_title('CO$_2$ emissions index')
+    ax1.plot(T, df.em_index, label='$c^{total}_t$')
+    ax1.plot(T, df.em_index_cp, label='$c^{cp}_t$')
+    ax1.plot(T[t_cutoff:], df.em_index_kp[t_cutoff:], label='$c^{kp}_t$')
+    ax1.plot(T, df.em_index_ep, label='$c^{ep}_t$')
+    ax1.axvline(t_warmup, color='black', linestyle='dotted')
+    ax1.set_xlabel('time')
+    ax1.set_ylabel('index ($t_{warmup}=100$)')
+    ax1.legend()
+
+    ax2.set_title('CO$_2$ intensity per output unit')
+    ax2.plot(T, df.carbon_emissions / df.GDP, 
+             label='$c^{total}_t$')
+    ax2.plot(T, df.carbon_emissions_cp / df.GDP_cp, 
+             label='$c^{cp}_t$')
+    # ax2.plot(T[t_cutoff:], df.carbon_emissions_kp[t_cutoff:] / df.GDP_kp[t_cutoff:], 
+    #          label='$c^{kp}_t$')
+    ax2.axvline(t_warmup, color='black', linestyle='dotted')
+    ax2.set_xlabel('time')
+    ax2.set_ylabel('carbon units per output unit')
+    ax2.legend()
+
+    ax3.set_title('percentage CO$_2$ emissions from energy')
+    ax3.plot(T, df.energy_percentage)
+    ax3.axvline(t_warmup, color='black', linestyle='dotted')
     
-
     plt.tight_layout()
     plt.savefig('plots/emissions.png')
 
