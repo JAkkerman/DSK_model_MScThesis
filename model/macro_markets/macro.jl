@@ -201,19 +201,15 @@ function update_macro_timeseries(
     # Update unemployment rate and unemployment benefits expenditure
     model.macroeconomy.U[t] = labormarket.E
     model.macroeconomy.switch_rate[t] = labormarket.switch_rate
-    # model.macroeconomy.Exp_UB[t] = government.Exp_UB[t]
-
-    # Consumption 
-    # model.macroeconomy.C[t] = sum(hh_id->model[hh_id].C[end], all_hh)
 
     # Compute total amount in system
-    compute_M!(all_hh, all_cp, all_kp, ep, government, indexfund, t, model)
+    compute_M!(model)
 
     # Compute average savings rates
-    compute_savings_macro!(all_hh, t, model)
+    compute_savings_macro!(model)
 
     # Wage and income statistics
-    update_wage_stats!(all_hh, all_p, t, model)
+    update_wage_stats!(model)
     update_income_stats!(all_hh, t, model)
 
     update_debt!(all_cp, all_kp, bankrupt_cp, bankrupt_kp, globalparam.Λ, t, model)
@@ -255,7 +251,7 @@ function update_macro_timeseries(
     model.macroeconomy.avg_Du_cp[t] = mean(cp_id -> model[cp_id].Dᵁ[end], all_cp)
     model.macroeconomy.avg_De_cp[t] = mean(cp_id -> model[cp_id].Dᵉ, all_cp)
 
-    compute_bankrupties!(all_cp, all_kp, bankrupt_cp, bankrupt_kp, t, model)
+    compute_bankrupties!(bankrupt_cp, bankrupt_kp, model)
 
     compute_unsatisfied_demand(all_cp, all_kp, all_hh, labormarket, 
                                globalparam.freq_per_machine, t, model)
@@ -273,9 +269,7 @@ function update_macro_timeseries(
     @timeit to "GINI" compute_GINI(all_hh, t, model)
 
     compute_I_W_thresholds(all_hh, t, model)
-
     compute_α_W_quantiles(all_hh, t, model)
-
 end
 
 
@@ -310,16 +304,7 @@ function compute_GDP!(
 end
 
 
-function compute_spending!(
-    # all_hh::Vector{Int64}, 
-    # all_cp::Vector{Int64}, 
-    # all_kp::Vector{Int64}, 
-    # all_p::Vector{Int64},
-    # model.macroeconomy::MacroEconomy, 
-    # t::Int, 
-    model::ABM
-    )
-
+function compute_spending!(model::ABM)
     # Compute planned and actual consumption
     model.macroeconomy.total_C[model.t] = sum(hh_id -> model[hh_id].C, model.all_hh)
     model.macroeconomy.total_C_actual[model.t] = sum(hh_id -> model[hh_id].C_actual, model.all_hh)
@@ -336,19 +321,12 @@ end
 Computes the ratios of bankrupt bp, lp and kp.
 """
 function compute_bankrupties!(
-    all_cp::Vector{Int64},
-    all_kp::Vector{Int64},
     bankrupt_cp::Vector{Int64},
     bankrupt_kp::Vector{Int64},
-    # model.macroeconomy::MacroEconomy,
-    t::Int64,
     model::ABM
-    )
-
-    model.macroeconomy.bankrupt_cp[t] = length(bankrupt_cp) / length(all_cp)
-
-    model.macroeconomy.bankrupt_kp[t] = length(bankrupt_kp) / length(all_kp)
-
+)
+    model.macroeconomy.bankrupt_cp[model.t] = length(bankrupt_cp) / model.i_param.n_cp
+    model.macroeconomy.bankrupt_kp[model.t] = length(bankrupt_kp) / model.i_param.n_kp
 end
 
 
@@ -356,65 +334,38 @@ end
 Computes the money supply of households, producers, government 
     and the indexfund
 """
-function compute_M!(
-    all_hh::Vector{Int},
-    all_cp::Vector{Int},
-    all_kp::Vector{Int},
-    ep,
-    government::Government,
-    indexfund::IndexFund,
-    # model.macroeconomy::MacroEconomy,
-    t::Int,
-    model::ABM
-    )
-
+function compute_M!(model::ABM)
     # Wealth of households
-    model.macroeconomy.M_hh[t] = sum(hh_id -> model[hh_id].W, all_hh)
+    model.macroeconomy.M_hh[model.t] = sum(hh_id -> model[hh_id].W, model.all_hh)
 
-    # Liquid assets of cp_id
-    model.macroeconomy.M_cp[t] = sum(cp_id -> model[cp_id].balance.NW, all_cp)
-
-    # Liquid assets of kp
-    model.macroeconomy.M_kp[t] = sum(kp_id -> model[kp_id].balance.NW, all_kp)
-
-    # Liquid assets of ep
-    model.macroeconomy.M_ep[t] = ep.NW_ep[t]
+    # Liquid assets of producers
+    model.macroeconomy.M_cp[model.t] = sum(cp_id -> model[cp_id].balance.NW, model.all_cp)
+    model.macroeconomy.M_kp[model.t] = sum(kp_id -> model[kp_id].balance.NW, model.all_kp)
+    model.macroeconomy.M_ep[model.t] = model.ep.NW_ep[model.t]
 
     # Money owned by government
-    model.macroeconomy.M_gov[t] = government.MS
+    model.macroeconomy.M_gov[model.t] = model.gov.MS
 
     # Money in investment fund
-    model.macroeconomy.M_if[t] = indexfund.Assets
+    model.macroeconomy.M_if[model.t] = model.idxf.Assets
 
     # Total amount of money stocks
-    model.macroeconomy.M[t] = (model.macroeconomy.M_hh[t] + model.macroeconomy.M_cp[t] + model.macroeconomy.M_kp[t] +
-                         model.macroeconomy.M_ep[t] + model.macroeconomy.M_gov[t] + model.macroeconomy.M_if[t])
+    model.macroeconomy.M[model.t] = (model.macroeconomy.M_hh[model.t] + model.macroeconomy.M_cp[model.t] + model.macroeconomy.M_kp[model.t] +
+                                     model.macroeconomy.M_ep[model.t] + model.macroeconomy.M_gov[model.t] + model.macroeconomy.M_if[model.t])
 end
 
 
 """
 Computes average wage statistics
 """
-function update_wage_stats!(
-    all_hh::Vector{Int},
-    all_p::Vector{Int},
-    # model.macroeconomy::MacroEconomy,
-    t::Int,
-    model::ABM
-    )
-
-    model.macroeconomy.w_avg[t] = mean(p_id -> model[p_id].w̄[end], all_p)
-
-    model.macroeconomy.w_req_avg[t] = mean(hh_id -> model[hh_id].wʳ, all_hh)
-
-    model.macroeconomy.w_sat_avg[t] = mean(hh_id -> model[hh_id].wˢ, all_hh)
-
-    # model.macroeconomy.wᴼ_max_mean[t] = mean(p_id -> model[p_id].wᴼ_max, all_p)
+function update_wage_stats!(model::ABM)
+    model.macroeconomy.w_avg[model.t] = mean(p_id -> model[p_id].w̄[end], model.all_p)
+    model.macroeconomy.w_req_avg[model.t] = mean(hh_id -> model[hh_id].wʳ, model.all_hh)
+    model.macroeconomy.w_sat_avg[model.t] = mean(hh_id -> model[hh_id].wˢ, model.all_hh)
 end
 
 function update_income_stats!(
     all_hh::Vector{Int}, 
-    # model.macroeconomy::MacroEconomy, 
     t::Int, 
     model::ABM
     )
@@ -468,9 +419,7 @@ function update_debt!(
 end
 
 
-function compute_price_data!(
-    model::ABM
-)
+function compute_price_data!(model::ABM)
 
     # Compute average price, weighted by market share
     avg_p_cp_t = sum(cp_id -> model[cp_id].p[end] * model[cp_id].f[end], model.all_cp)
@@ -499,36 +448,18 @@ end
 """
 Computes fraction of household that was not satisfied
 """
-function compute_unsatisfied_demand(
-    all_cp::Vector{Int},
-    all_kp::Vector{Int},
-    all_hh::Vector{Int},
-    labormarket,
-    freq_per_machine::Int64,
-    t::Int,
-    model::ABM
-    )
+function compute_unsatisfied_demand(model::ABM)
 
-    model.macroeconomy.unsat_demand[t] = sum(cp_id -> model[cp_id].Dᵁ[end], all_cp) / sum(cp_id -> model[cp_id].D[end] + model[cp_id].Dᵁ[end], all_cp)
+    model.macroeconomy.unsat_demand[model.t] = (sum(cp_id -> model[cp_id].Dᵁ[end], model.all_cp) 
+                                                / sum(cp_id -> model[cp_id].D[end] + model[cp_id].Dᵁ[end], model.all_cp))
 
-    model.macroeconomy.unspend_C[t] = 1 - sum(hh_id -> model[hh_id].C_actual, all_hh) / sum(hh_id -> model[hh_id].C, all_hh)
+    model.macroeconomy.unspend_C[model.t] = (1 - sum(hh_id -> model[hh_id].C_actual, model.all_hh) 
+                                            / sum(hh_id -> model[hh_id].C, model.all_hh))
 
-    model.macroeconomy.unsat_invest[t] =  1 - (sum(kp_id -> model[kp_id].Q[end], all_kp) / 
-                                    (sum(cp_id -> freq_per_machine * (model[cp_id].n_mach_ordered_EI + model[cp_id].n_mach_ordered_RS), all_cp)))
-    # model.macroeconomy.unsat_invest[t] = mean(cp_id -> model[cp_id].n_mach_desired_total > 0 ? (1 - (model[cp_id].n_mach_ordered_RS + model[cp_id].n_mach_ordered_EI) 
-    #                                               / model[cp_id].n_mach_desired_total) : 0, all_cp)
-    # total_mach_desired = 0
-    # total_mach_ordered = 0
-    # for cp_id in all_cp
-    #     if model[cp_id].n_mach_desired_total > 0
-    #         total_mach_desired += model[cp_id].n_mach_desired_total
-    #         total_mach_ordered += model[cp_id].n_mach_ordered_RS + model[cp_id].n_mach_ordered_EI
-    #     end
-    # end
-    # println(total_mach_desired, " ", total_mach_ordered)
-    # model.macroeconomy.unsat_invest[t] = 1 - total_mach_ordered / total_mach_desired
+    model.macroeconomy.unsat_invest[model.t] =  (1 - sum(kp_id -> model[kp_id].Q[end], model.all_kp) 
+                                            / (sum(cp_id -> model.g_param.freq_per_machine * (model[cp_id].n_mach_ordered_EI + model[cp_id].n_mach_ordered_RS), model.all_cp)))
 
-    model.macroeconomy.unsat_L_demand[t] = 1 - labormarket.L_hired / labormarket.L_demanded
+    model.macroeconomy.unsat_L_demand[model.t] = 1 - model.labormarket.L_hired / model.labormarket.L_demanded
 end
 
 
@@ -637,26 +568,19 @@ function compute_I_W_thresholds(
 end
 
 
-function compute_savings_macro!(
-    all_hh::Vector{Int64}, 
-    # model.macroeconomy::MacroEconomy, 
-    t::Int,
-    model::ABM
-    )
+function compute_savings_macro!(model::ABM)
+    mean_s_emp = mean(hh_id -> model[hh_id].s, model.labormarket.employed_hh)
+    mean_s_unemp = mean(hh_id -> model[hh_id].s, model.labormarket.unemployed_hh)
+    # for hh_id in model.all_hh
+    #     if model[hh_id].employed
+    #         push!(all_s_emp, model[hh_id].s)
+    #     else
+    #         push!(all_s_unemp, model[hh_id].s)
+    #     end
+    # end
 
-    all_s_emp = []
-    all_s_unemp = []
-
-    for hh_id in all_hh
-        if model[hh_id].employed
-            push!(all_s_emp, model[hh_id].s)
-        else
-            push!(all_s_unemp, model[hh_id].s)
-        end
-    end
-
-    model.macroeconomy.s_emp[t] = length(all_s_emp) > 1 ? mean(all_s_emp) : NaN
-    model.macroeconomy.s_unemp[t] = length(all_s_unemp) > 1 ? mean(all_s_unemp) : NaN
+    model.macroeconomy.s_emp[model.t] = length(model.labormarket.employed_hh) > 1 ? mean_s_emp : NaN
+    model.macroeconomy.s_unemp[model.t] = length(model.labormarket.unemployed_hh) > 1 ? mean_s_unemp : NaN
 end
 
 

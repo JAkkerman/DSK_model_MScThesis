@@ -1,7 +1,7 @@
 @Base.kwdef mutable struct LaborMarket
 
     employed_hh::Vector{Int64} = Int64[]      # array of employed households
-    unemployed::Vector{Int64} = Int64[]       # array of unemployed households
+    unemployed_hh::Vector{Int64} = Int64[]    # array of unemployed households
     jobseeking_hh::Vector{Int64} = Int64[]    # array of jobseeking households
 
     hiring_producers::Vector{Int64} = Int64[] # array of hiring producers
@@ -58,7 +58,7 @@ function spread_employees_lm!(
     for hh_id in model.all_hh[i:end]
         set_unemployed_hh!(model[hh_id])
         model[hh_id].w .= 0.0        
-        push!(labormarket.unemployed, model[hh_id].id)
+        push!(labormarket.unemployed_hh, model[hh_id].id)
     end
 
     update_unemploymentrate_lm!(labormarket)
@@ -103,7 +103,7 @@ function labormarket_process!(
     employed_jobseekers = find_employed_jobseekers_lm(labormarket.employed_hh, globalparam.ψ_E)
 
     # Update jobseeking households
-    labormarket.jobseeking_hh = vcat(employed_jobseekers, labormarket.unemployed)
+    labormarket.jobseeking_hh = vcat(employed_jobseekers, labormarket.unemployed_hh)
 
     # Labor market matching process
     @timeit to "matching" matching_lm(
@@ -157,7 +157,7 @@ function update_unemploymentrate_lm!(
     labormarket::LaborMarket
     )
 
-    labormarket.E = (length(labormarket.unemployed) / (length(labormarket.employed_hh) + length(labormarket.unemployed)))
+    labormarket.E = (length(labormarket.unemployed_hh) / (length(labormarket.employed_hh) + length(labormarket.unemployed_hh)))
 end
 
 
@@ -303,7 +303,7 @@ function update_hiredworkers_lm!(
     append!(labormarket.employed_hh, to_be_hired)
 
     # Remove employed workers from unemployed category
-    filter!(hh_id -> hh_id ∉ to_be_hired, labormarket.unemployed)
+    filter!(hh_id -> hh_id ∉ to_be_hired, labormarket.unemployed_hh)
 end
 
 
@@ -313,7 +313,7 @@ function update_firedworker_lm!(
     )
 
     # Add newly unemployed workers to unemployed category
-    append!(labormarket.unemployed, to_be_fired)
+    append!(labormarket.unemployed_hh, to_be_fired)
 
     # Remove unemployed workers from employed category
     filter!(hh_id -> hh_id ∉ to_be_fired, labormarket.employed_hh)

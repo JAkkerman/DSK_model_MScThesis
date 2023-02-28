@@ -49,7 +49,6 @@ mutable struct Properties
     labormarket::LaborMarket
     kp_brochures::Dict{Symbol, Dict{Symbol, Float64}}
     cmdata::CMData
-    # ginidata::Matrix{Float64}
     perc_of_wealth::Vector{Float64}
     equal_div::Vector{Float64}
 end

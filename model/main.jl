@@ -519,7 +519,7 @@ function model_step!(
             model
         )
     end
-    pay_unemployment_benefits_gov!(government, labormarket.unemployed, t, model)
+    pay_unemployment_benefits_gov!(government, labormarket.unemployed_hh, t, model)
 
 
     # (5) Production takes place for cp and kp
