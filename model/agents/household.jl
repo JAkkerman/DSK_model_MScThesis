@@ -157,7 +157,7 @@ function compute_consumption_budget_hh!(
     #     W̃max = W̃min + 1.
     # end
 
-    if hh.W > 0
+    if hh.W > 0.
         # Scale W between 0 and 100
         if hh.W̃ == W̃min
             hh.C = hh.W
@@ -260,7 +260,7 @@ function receive_ordered_goods_hh!(
 
     for cp_id in hh.cp
         i = cp_id - n_hh
-        hh.unsat_dem[cp_id] = hh_D[i] > 0 ? unsat_demand[i] / hh_D[i] : 0.0
+        hh.unsat_dem[cp_id] = hh_D[i] > 0 ? unsat_demand[i] / hh_D[i] : 0.
     end
 end
 
@@ -331,10 +331,7 @@ end
 """
 Sets household to be unemployed.
 """
-function set_unemployed_hh!(
-    hh::Household
-    )
-
+function set_unemployed_hh!(hh::Household)
     hh.employed = false
     hh.employer_id = 0
 end

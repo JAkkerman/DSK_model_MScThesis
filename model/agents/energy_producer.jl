@@ -2,7 +2,7 @@
     T::Int64=T                                    # Total number of iterations
 
     D_ep::Vector{Float64} = zeros(Float64, T)     # Demand for energy units over time
-    Qmax_ep::Vector{Float64} = zeros(Float64, T)     # Maximum production of units over time
+    Qmax_ep::Vector{Float64} = zeros(Float64, T)  # Maximum production of units over time
 
     # Prices, cost and investments
     markup_ep::Float64                            # Markup to determine price
@@ -17,7 +17,7 @@
     IN_d::Vector{Float64} = zeros(Float64, T)     # R&D spending allocated to innovation in dirty tech
     EId_ep::Vector{Float64} = zeros(Float64, T)   # Desired amount of units of expansionary investments
     RSd_ep::Vector{Float64} = zeros(Float64, T)   # Desired amount of units of replacement investments
-    EC_ep::Vector{Float64} = zeros(Float64, T)    # Cost of spansionary investment
+    EC_ep::Vector{Float64} = zeros(Float64, T)    # Cost of expansionary investment
     carbontax::Vector{Float64} = zeros(Float64, T)# Paid carbon taxes
 
     # Technological parameters
@@ -114,13 +114,11 @@ function produce_energy_ep!(
     t::Int64,
     t_warmup::Int64,
     model::ABM
-    )
+)
 
     # Update age for all pp and cost figure for dirty pp
     for pp ∈ Iterators.flatten((ep.green_portfolio, ep.dirty_portfolio))
-
         update_age_pp!(pp)
-
         if pp ∈ ep.dirty_portfolio
             update_c_pp!(pp, globalparam.p_f, government.τᶜ)
         end
@@ -142,8 +140,10 @@ function produce_energy_ep!(
     # Choose pp to use in production
     choose_powerplants_ep!(ep, t)
     compute_FU_ICₑ_ep!(ep, globalparam.p_f, t)
-    compute_emissions_ep!(ep, t)
 
+    compute_PCₑ_ep!(ep, t)
+
+    compute_emissions_ep!(ep, t)
     pay_carbontax_ep!(ep, government, t)
 
     # Compute profits
@@ -155,10 +155,7 @@ end
 """
 Lets ep choose power plants to produce energy demand with
 """
-function choose_powerplants_ep!(
-    ep::EnergyProducer,
-    t::Int64
-    )
+function choose_powerplants_ep!(ep::EnergyProducer, t::Int64)
 
     # Check if all production can be done using green tech, if not, compute cost
     # of production using dirty tech
@@ -186,26 +183,20 @@ function choose_powerplants_ep!(
 end
 
 
-function pay_dividends_ep!(
-    ep::EnergyProducer, 
-    indexfund::IndexFund, 
-    t::Int64
-    )
+function pay_dividends_ep!(ep::EnergyProducer, indexfund::IndexFund, t::Int64)
 
     # TODO: describe
 
-    b = 3
+    b = 1.
 
     # ep should have at least enough NW to pay cost of production for b months plus an
     # investment in a green plant
-    req_NW = b * ep.PC_ep[t] + ep.IC_g[t]
-
     # Pay expenses to if, as 'indeterminate' producer receives these expenses,
-    dividends = ep.PC_ep[t] + ep.IC_ep[t] + ep.RD_ep[t]
-    
-    # Gather excess liquid assets
-    dividends += max(ep.NW_ep[t] - req_NW, 0)
 
+    total_expenses = ep.PC_ep[t] + ep.IC_ep[t] + ep.RD_ep[t]
+    req_NW = b * total_expenses
+    poss_dividends = max(ep.NW_ep[t] - req_NW, 0)
+    dividends = total_expenses + poss_dividends
     ep.NW_ep[t] = min(ep.NW_ep[t], req_NW)
 
     receive_dividends_if!(indexfund, dividends)
@@ -228,11 +219,8 @@ function plan_investments_ep!(
     t::Int64,
     t_warmup::Int64
     )
-
     compute_RSᵈ_ep!(ep, globalparam.ηₑ, t)
-
     compute_EIᵈ_ep!(ep, t)
-
     expand_and_replace_pp_ep!(ep, globalparam, frac_green, t, t_warmup)
 end
 
@@ -263,18 +251,9 @@ function expand_and_replace_pp_ep!(
     else
         # If in warmup period, ep will replace such that share of green tech remains
         # at init level
-
-        # n_add_green_pp = max(ceil(frac_green * (ep.green_capacity[t] + ep.dirty_capacity[t]
-        #                       + n_add_pp) - ep.green_capacity[t]), 0)
-        # n_add_dirty_pp = max(n_add_pp - n_add_green_pp, 0)
         n_add_green_pp = round(Int64, frac_green * n_add_pp)
         n_add_dirty_pp = round(Int64, (1-frac_green) * n_add_pp)
     end
-
-    # println(ep.EId_ep[t], " ", ep.RSd_ep[t])
-    # println(n_add_pp, " ", n_add_green_pp, " ", n_add_dirty_pp)
-    # println()
-
     # TODO: if expanding green, invested sum should go somewhere!
 
     # Add green power plants
@@ -293,16 +272,8 @@ function expand_and_replace_pp_ep!(
                 0.,
                 globalparam
             )
-            # green_pp = PowerPlant(
-            #     type = "Green",
-            #     age = 0,
-            #     c = 0.0,
-            #     freq = globalparam.freq_per_powerplant,
-            #     capacity = globalparam.freq_per_powerplant,
-            #     Aᵀ = 0.0,
-            #     em = 0.0
-            # )
             push!(ep.green_portfolio, green_pp)
+            ep.IC_ep[t] += ep.IC_g[t] * globalparam.freq_per_powerplant
         end
     end
 
@@ -403,12 +374,7 @@ COMPUTE AND UPDATE FUNCTIONS
 Computes the profits and new liquid assets resulting from last periods production.
     Lamperti et al (2018), eq 10.
 """
-function compute_Πₑ_NWₑ_ep!(
-    ep::EnergyProducer, 
-    t::Int64
-    )
-
-    # Compute profits
+function compute_Πₑ_NWₑ_ep!(ep::EnergyProducer, t::Int64)
     ep.profit_ep[t] = ep.p_ep[t] * ep.D_ep[t] - ep.PC_ep[t] - ep.IC_ep[t] - ep.RD_ep[t] - ep.carbontax[t]
     ep.NW_ep[t] = t > 1 ? ep.NW_ep[t-1] + ep.profit_ep[t] : ep.profit_ep[t]
 end
@@ -418,19 +384,13 @@ end
 Computes cost of production PCₑ of infra marginal power plants
     Lamperti et al (2018), eq 12.
 """
-function compute_PCₑ_ep!(
-    ep::EnergyProducer,
-    t::Int64
-    )
-
-    dirty_cost = 0.0
-
+function compute_PCₑ_ep!(ep::EnergyProducer, t::Int64)
+    dirty_cost = 0.
     for pp in ep.infra_marg
         if pp ∈ ep.dirty_portfolio
-            dirty_cost += pp.freq * pp.c * pp.Aᵗ
+            dirty_cost += pp.freq * pp.c * pp.Aᵀ
         end
     end
-
     ep.PC_ep[t] = dirty_cost
 end
 
@@ -438,20 +398,12 @@ end
 """
 Computes the price for each sold energy unit
 """
-function compute_pₑ_ep!(
-    ep::EnergyProducer, 
-    t::Int64
-    )
-
-    # c̄ = length(ep.dirty_portfolio) > 0 ? ep.dirty_portfolio[end].c : 0.0
-    # ep.p_ep[t] = t > 1 && ep.D_ep[t-1] <= ep.green_capacity[t] ? ep.markup_ep : c̄ + ep.markup_ep
-
+function compute_pₑ_ep!(ep::EnergyProducer, t::Int64)
     if length(ep.dirty_portfolio) > 0
         c̄ = maximum(pp -> pp.c, ep.dirty_portfolio)
     else
         c̄ = 0.
     end
-
     ep.p_ep[t] = t > 1 ? ep.markup_ep + (1 - ep.green_frac_prod[t-1]) * c̄ : ep.markup_ep
 end
 
@@ -460,11 +412,7 @@ end
 Updates capacity figures for green and dirty technologies
     Lamperti et al (2018) eq 14.
 """
-function update_capacities_ep!(
-    ep::EnergyProducer,
-    t::Int64
-    )
-
+function update_capacities_ep!(ep::EnergyProducer, t::Int64)
     ep.green_capacity[t] = length(ep.green_portfolio) > 0 ? sum(pp -> pp.freq, ep.green_portfolio) : 0.0
     ep.dirty_capacity[t] = length(ep.dirty_portfolio) > 0 ? sum(pp -> pp.freq, ep.dirty_portfolio) : 0.0
 end
@@ -474,13 +422,8 @@ end
 Computes the maximum production level Q̄
     Lamperti et al (2018) eq 15.
 """
-function compute_Q̄_ep!(
-    ep::EnergyProducer, 
-    t::Int64
-    )
-
+function compute_Q̄_ep!(ep::EnergyProducer, t::Int64)
     ep.Qmax_ep[t] = ep.green_capacity[t] 
-
     if length(ep.dirty_portfolio) > 0
         ep.Qmax_ep[t] += length(ep.dirty_portfolio) > 0 ? sum(pp -> pp.freq * pp.Aᵀ, ep.dirty_portfolio) : 0.0
     end
@@ -491,11 +434,7 @@ end
 Computes the desired expansion investment
     Lamperti et al (2018) eq 16.
 """
-function compute_EIᵈ_ep!(
-    ep::EnergyProducer,
-    t::Int64
-    )
-
+function compute_EIᵈ_ep!(ep::EnergyProducer, t::Int64)
     ep.EId_ep[t] = ep.Qmax_ep[t] < ep.D_ep[t] ? ep.D_ep[t] - (ep.green_capacity[t] + ep.dirty_capacity[t]) : 0.0
 end
 
@@ -504,11 +443,7 @@ end
 Computes the desired replacement investment
 
 """
-function compute_RSᵈ_ep!(
-    ep::EnergyProducer,
-    ηₑ::Int64,
-    t::Int64
-    )
+function compute_RSᵈ_ep!(ep::EnergyProducer, ηₑ::Int64, t::Int64)
 
     # Select powerplants to be replaced
     ep.pp_tb_replaced = []
@@ -571,6 +506,7 @@ function update_age_pp_ep!(
     end
 end
 
+
 """
 Computes emissions following from energy production
 """
@@ -618,5 +554,5 @@ function compute_FU_ICₑ_ep!(
 )
 
     ep.FU[t] = length(ep.infra_marg) > 0 ? sum(pp-> pp ∈ ep.dirty_portfolio ? pp.capacity / pp.Aᵀ : 0.0, ep.infra_marg) : 0.0
-    ep.IC_ep[t] = p_f * ep.FU[t]
+    # ep.IC_ep[t] = p_f * ep.FU[t]
 end

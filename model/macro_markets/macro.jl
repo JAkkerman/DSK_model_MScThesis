@@ -66,7 +66,7 @@
     # Labor market
     U::Vector{Float64} = zeros(Float64, T)                  # unemployment over time
     switch_rate::Vector{Float64} = zeros(Float64, T)        # rate of switching employers
-    Exp_UB::Vector{Float64} = zeros(Float64, T)             # total spending on UB
+    # Exp_UB::Vector{Float64} = zeros(Float64, T)             # total spending on UB
     dL_avg::Vector{Float64} = zeros(Float64, T)             # average desired labor change
     dL_cp_avg::Vector{Float64} = zeros(Float64, T)          # average desired over time for cp
     dL_kp_avg::Vector{Float64} = zeros(Float64, T)          # average desired over time for kp
@@ -253,8 +253,7 @@ function update_macro_timeseries(
 
     compute_bankrupties!(bankrupt_cp, bankrupt_kp, model)
 
-    compute_unsatisfied_demand(all_cp, all_kp, all_hh, labormarket, 
-                               globalparam.freq_per_machine, t, model)
+    compute_unsatisfied_demand(model)
 
     model.macroeconomy.N_goods[t] = sum(cp_id -> model[cp_id].N_goods, all_cp)
     model.macroeconomy.avg_N_goods[t] = mean(cp_id -> model[cp_id].N_goods, all_cp)
@@ -569,8 +568,12 @@ end
 
 
 function compute_savings_macro!(model::ABM)
-    mean_s_emp = mean(hh_id -> model[hh_id].s, model.labormarket.employed_hh)
-    mean_s_unemp = mean(hh_id -> model[hh_id].s, model.labormarket.unemployed_hh)
+    if length(model.labormarket.employed_hh) > 1
+        model.macroeconomy.s_emp[model.t] = mean(hh_id -> model[hh_id].s, model.labormarket.employed_hh)
+    end
+    if length(model.labormarket.unemployed_hh) > 1
+        model.macroeconomy.s_unemp[model.t] = mean(hh_id -> model[hh_id].s, model.labormarket.unemployed_hh)
+    end
     # for hh_id in model.all_hh
     #     if model[hh_id].employed
     #         push!(all_s_emp, model[hh_id].s)
@@ -579,8 +582,8 @@ function compute_savings_macro!(model::ABM)
     #     end
     # end
 
-    model.macroeconomy.s_emp[model.t] = length(model.labormarket.employed_hh) > 1 ? mean_s_emp : NaN
-    model.macroeconomy.s_unemp[model.t] = length(model.labormarket.unemployed_hh) > 1 ? mean_s_unemp : NaN
+    # model.macroeconomy.s_emp[model.t] = length(model.labormarket.employed_hh) > 1 ? mean_s_emp : NaN
+    # model.macroeconomy.s_unemp[model.t] = length(model.labormarket.unemployed_hh) > 1 ? mean_s_unemp : NaN
 end
 
 

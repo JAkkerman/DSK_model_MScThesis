@@ -20,11 +20,7 @@ end
 """
 Takes dividends from producers
 """
-function receive_dividends_if!(
-    indexfund::IndexFund,
-    dividends::Float64
-    )
-    
+function receive_dividends_if!(indexfund::IndexFund, dividends::Float64)
     indexfund.Assets += dividends
 end
 
@@ -48,11 +44,7 @@ end
 """
 Deducts funds for net debts lost
 """
-function deduct_unpaid_net_debts_if!(
-    indexfund::IndexFund,
-    total_unpaid_net_debt::Float64
-    )
-
+function deduct_unpaid_net_debts_if!(indexfund::IndexFund, total_unpaid_net_debt::Float64)
     indexfund.Assets -= total_unpaid_net_debt
 end
 
@@ -70,45 +62,38 @@ function distribute_dividends_if!(
     )
 
     # Distribute proportional to wealth
-    all_W = map(hh_id -> model[hh_id].W, all_hh)
-    total_wealth = sum(all_W)
+    all_W = map(hh_id -> model[hh_id].W, model.all_hh)
+    max_W = maximum(all_W)
+    total_W = sum(all_W)
 
     # Compute return rates:
-    indexfund.returns_investments = ((1 - τᴷ) * indexfund.Assets) / total_wealth
+    total_dividends = (1 - τᴷ) * indexfund.Assets
+    indexfund.returns_investments = total_dividends / total_W
 
-    total_capgains_tax = 0
-
-    for hh_id in all_hh
+    for hh_id in model.all_hh
         # Do not award to most wealthy household to avoid one household
         # taking over all wealth
+        dividend_share = 0.
         if t < 10 
-            dividend_share = (model[hh_id].W / total_wealth) * indexfund.Assets
-        elseif model[hh_id].W ≠ maximum(all_W)
-            dividend_share = (model[hh_id].W / (total_wealth - maximum(all_W))) * indexfund.Assets
-        else
-            dividend_share = 0.
+            dividend_share = (model[hh_id].W / total_W)
+        elseif model[hh_id].W ≠ max_W
+            dividend_share = (model[hh_id].W / (total_W - max_W))
         end
 
-        total_capgains_tax += τᴷ * dividend_share
-        receiveincome_hh!(model[hh_id], dividend_share * (1 - τᴷ); capgains=true)
+        dividend = dividend_share * total_dividends
+        receiveincome_hh!(model[hh_id], dividend; capgains=true)
     end
 
-    # println(model[1].capital_I / model[1].W)
-
-    # Reset assets back to zero
+    # Pay capgains tax, reset assets back to zero
+    total_capgains_tax = τᴷ * indexfund.Assets
+    receive_capgains_tax_gov!(government, total_capgains_tax, model.t)
     indexfund.Assets = 0.
-
-    receive_capgains_tax_gov!(government, total_capgains_tax, t)
 end
 
 
 """
 Lets government issue bonds on the capital market.
 """
-function issuegovbonds(
-    indexfund::IndexFund, 
-    govdeficit::Float64
-    )
-
+function issuegovbonds(indexfund::IndexFund, govdeficit::Float64)
     indexfund.Assets -= govdeficit
 end

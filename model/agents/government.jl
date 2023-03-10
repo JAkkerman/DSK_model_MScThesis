@@ -20,8 +20,7 @@
     τᴱ_ts::Vector{Float64} = @MVector fill(τᴱ, T)   # energy tax
     τᶜ_ts::Vector{Float64} = @MVector fill(τᶜ, T)   # emission tax
 
-
-    MS::Float64 = 0.0                      # money stock owned by government
+    MS::Float64 = 0.                                # money stock owned by government
 
     # Revenues
     rev_incometax::Vector{Float64} = zeros(Float64, T)  # hist revenues of income tax
@@ -52,7 +51,6 @@ function initgovernment(
             change_taxrate!(changed_taxrate, government, t_warmup)
         end
     end
-
     return government
 end
 

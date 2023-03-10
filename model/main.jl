@@ -378,15 +378,15 @@ function model_step!(
     # Update schedulers
     @timeit timer "schedule" all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
 
-    # Redistrubute remaining stock of dividents to households
-    @timeit timer "distr div" distribute_dividends_if!(
-        indexfund,
-        government,
-        all_hh,
-        government.τᴷ,
-        t,
-        model
-    )
+    # # Redistrubute remaining stock of dividents to households
+    # @timeit timer "distr div" distribute_dividends_if!(
+    #     indexfund,
+    #     government,
+    #     all_hh,
+    #     government.τᴷ,
+    #     t,
+    #     model
+    # )
 
     # Redistribute goverment balance
     resolve_gov_balance!(government, indexfund, globalparam, all_hh, t, model)
@@ -606,8 +606,6 @@ function model_step!(
         timer
     )
 
-    # println("   $t 7 start $(Dates.format(now(), "HH:MM"))")
-
     # (6) kp deliver goods to cp, kp make up profits
     @timeit timer "send machines kp" for kp_id in all_kp
         send_ordered_machines_kp!(model[kp_id], ep, globalparam, t, model)
@@ -629,8 +627,6 @@ function model_step!(
         t, 
         model
     )
-
-    # println("   $t 7 start $(Dates.format(now(), "HH:MM"))")
 
     # (7) government receives profit taxes and computes budget balance
     levy_profit_tax_gov!(government, all_p, t, model)
@@ -706,6 +702,16 @@ function model_step!(
         model
     )
 
+    # Redistribute remaining stock of dividents to households
+    @timeit timer "distr div" distribute_dividends_if!(
+        indexfund,
+        government,
+        all_hh,
+        government.τᴷ,
+        t,
+        model
+    )
+
     # Increment time by one step
     model.t += 1
 
@@ -736,7 +742,7 @@ function run_simulation(;
     sim_nr::Int64 = 0,
     showprogress::Bool = false,
     savedata::Bool = true,
-    seed::Int64 = Random.rand(1000:9999)
+    seed::Int64 = 1234
 )
 
     # Set seed of simulation

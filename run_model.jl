@@ -9,7 +9,7 @@ run_simulation(
     savedata = true,
     show_full_output = true,
     showprogress = true,
-    seed = 1234
+    seed = seed
 )
 
 # run_simulation(

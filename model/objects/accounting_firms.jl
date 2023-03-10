@@ -68,7 +68,6 @@ function close_balance_all_p!(
         if typeof(model[p_id]) == ConsumerGoodProducer
             all_max_NW += max_NW
         end
-
         
         if model[p_id].balance.NW < 0
 
@@ -85,9 +84,9 @@ function close_balance_all_p!(
             # First pay off debts with excess funds, excess dividends are paid out
             firm_dividends = singular_debt_payback_p!(model[p_id], excess_NW)
             total_dividends += firm_dividends
+            # total_dividends += excess_NW
 
             model[p_id].balance.NW = max_NW
-            
         end
 
         # Compute Equity

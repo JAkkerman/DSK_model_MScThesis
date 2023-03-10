@@ -44,7 +44,7 @@ Defines struct for consumer good producer
     Ξ::Vector{Machine}                        # machines
     n_machines::Float64 = 0.                  # total freq of machines # TODO rename
     cu::Float64 = 0.                          # capital utilizataion
-    employees::Vector{Int64} = []               # employees list
+    employees::Vector{Int64} = []             # employees list
     L::Float64                                # labor units
     Lᵈ::Float64 = L                           # desired labor units
     ΔLᵈ::Float64 = 0.0                        # desired change in labor force

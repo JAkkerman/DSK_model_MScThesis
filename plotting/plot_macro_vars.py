@@ -2,7 +2,6 @@ from matplotlib.gridspec import GridSpec
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-# import scipy.stats as stats
 
 def plot_macro_vars(df):
     """
@@ -18,7 +17,7 @@ def plot_macro_vars(df):
     ax[0,0].plot(T, 100 * df.GDP_hh / df.CPI_cp, label='hh share')
     ax[0,0].plot(T, 100 * df.GDP_cp / df.CPI_cp, label='cp share')
     ax[0,0].plot(T, 100 * df.GDP_kp / df.CPI_cp, label='kp share')
-    ax[0,0].plot(T, 100 * df.Exp_UB / df.CPI_cp, label='UB exp')
+    ax[0,0].plot(T, 100 * df.exp_UB / df.CPI_cp, label='UB exp')
     ax[0,0].plot(T, 100 * df.total_I / df.CPI_cp, label='I')
     ax[0,0].plot(T, 100 * df.total_C / df.CPI_cp, label='C')
     ax[0,0].set_title("GDP")
@@ -32,6 +31,7 @@ def plot_macro_vars(df):
     ax[0,1].legend()
 
     # Money Supply 
+    # ax[1,0].plot(T, (df.M - df.debt_tot) - (df.M[0] - df.debt_tot[0]))
     ax[1,0].plot(T, df.M - df.debt_tot, 
                  label='total', zorder=5, linestyle='dashed')
     ax[1,0].plot(T, df.M_hh, label='hh')
@@ -39,11 +39,12 @@ def plot_macro_vars(df):
     ax[1,0].plot(T, df.M_kp, label='kp')
     ax[1,0].plot(T, df.M_ep, label='ep')
     ax[1,0].plot(T, df.M_gov, label='gov')
-    ax[1,0].plot(T, df.debt_tot, label='total debts')
-    ax[1,0].hlines(df.M[0], 0, len(df.M), linestyle='dotted', alpha=0.5, color='black')
     ax[1,0].plot(T, df.M_if, label='if')
-    ax[1,0].set_title('Money supply')
+    ax[1,0].plot(T, df.debt_tot, label='total debts')
+    ax[1,0].axhline(df.M[0], linestyle='dotted', alpha=0.5, color='black')
+    ax[1,0].axhline(0, linestyle='dotted', alpha=0.5, color='black')
     ax[1,0].legend()
+    ax[1,0].set_title('Money supply')
 
     # Inflation
     ax[1,1].plot(T, df.CPI_cp, label='cp')
@@ -632,7 +633,7 @@ def plot_LIS(df_macro):
     plt.show()
 
     
-if __name__=="__main__":
+if __name__ == "__main__":
 
     df_macro = pd.read_csv('../results/result_data/model_data_1234.csv')
 
@@ -647,7 +648,7 @@ if __name__=="__main__":
     # plot_sales_dist()
 
     # df_climate_energy = pd.read_csv('../results/result_data/climate_and_energy.csv')
-    # plot_energy(df_macro)
+    plot_energy(df_macro)
     # plot_climate(df_climate_energy, df_macro)
     plot_emissions(df_macro)
 

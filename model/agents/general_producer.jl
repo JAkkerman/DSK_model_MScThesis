@@ -175,17 +175,14 @@ end
 """
 Adds to-be-repaid amount as an outgoing cashflow to current account.
 """
-function monthly_debt_payback_p!(
-    p::AbstractAgent,
-    b::Int64
-    )
+function monthly_debt_payback_p!(p::AbstractAgent, b::Int64)
 
     # Add repaid debt as outgoing cashflow
-    p.curracc.rep_debt = p.debt_installments[1]
+    p.curracc.rep_debt = p.debt_installments[begin]
 
     # Shift remaining debt amounts
-    p.debt_installments[1:b] .= p.debt_installments[2:b+1]
-    p.debt_installments[b+1] = 0.0
+    p.debt_installments[begin:b] .= p.debt_installments[begin+1:b+1]
+    p.debt_installments[b+1] = 0.
 
     p.balance.debt = sum(p.debt_installments)
 end
@@ -194,24 +191,30 @@ end
 """
 Pays back additional amount of debt.
 """
-function singular_debt_payback_p!(
-    p::AbstractAgent,
-    excess_NW::Float64
-)
-
-    # return excess_NW
-
-    b = count(x -> x > 0, p.debt_installments)
+function singular_debt_payback_p!(p::AbstractAgent, excess_NW::Float64)
 
     payoff_debt = min(p.balance.debt, excess_NW)
-    # println(payoff_debt)
-    # println(p.debt_installments)
-    p.debt_installments[1:b] .-= (payoff_debt / b)
-    # println(p.debt_installments)
-    p.balance.debt = sum(p.debt_installments)
-    p.curracc.rep_debt += payoff_debt
+    excess_NW_after_debt = excess_NW - payoff_debt
 
-    return excess_NW - payoff_debt
+    can_pay_full_debt = payoff_debt == p.balance.debt
+
+    if can_pay_full_debt
+        p.curracc.rep_debt = payoff_debt
+        p.debt_installments .= 0.
+        p.balance.debt = 0.
+    else
+        i = 1
+        while p.debt_installments[end - i] < excess_NW
+            excess_NW -= p.debt_installments[end - i]
+            p.debt_installments[end - i] = 0.
+            i += 1
+        end
+        p.debt_installments[end - i] -= excess_NW
+        p.balance.debt = sum(p.debt_installments)
+        p.curracc.rep_debt += payoff_debt
+    end
+
+    return excess_NW_after_debt
 end
 
 
@@ -293,10 +296,6 @@ function kill_all_bankrupt_p!(
     total_unpaid_net_debt = 0.0
     for p_id in Iterators.flatten((bankrupt_cp, bankrupt_kp))
 
-        # if p_id ∈ bankrupt_cp
-        #     println(length(model[p_id].Ξ))
-        # end
-
         # Fire remaining workers
         for hh_id in model[p_id].employees
             set_unemployed_hh!(model[hh_id])
@@ -315,10 +314,7 @@ end
 """
 Checks if producers must be declared bankrupt
 """
-function check_if_bankrupt_p!(
-    p::AbstractAgent,
-    t_wait::Int
-    )::Bool
+function check_if_bankrupt_p!(p::AbstractAgent, t_wait::Int64)::Bool
 
 
     if (typeof(p) == ConsumerGoodProducer && p.age > t_wait 
