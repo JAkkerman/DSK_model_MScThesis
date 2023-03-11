@@ -9,7 +9,6 @@
     init_unempl_rate::Float64 = 0.05      # initial unemployment rate
 
     # Init params of kp
-    # n_init_emp_kp::Int64 = 10             # number of employees of new kp at init
     A_LP_0::Float64 = 1.0                 # initial productivity level A_LP
     A_EE_0::Float64 = 1.0                 # initial productivity level A_EE
     A_EF_0::Float64 = 1.0                 # initial productivity level A_EF
@@ -18,8 +17,7 @@
     B_EF_0::Float64 = 1.0                 # initial productivity level B_EF
 
     # Init params of cp
-    # n_init_emp_cp::Int = 10               # number of employees of cp at init
-    n_machines_init::Int64 = 40           # number of machines of cp at init
+    # n_machines_init::Int64 = 400           # number of machines of cp at init
 
     # Init params of hh
     n_cp_hh::Int64 = 25                   # number of cp of hh (also min amount)

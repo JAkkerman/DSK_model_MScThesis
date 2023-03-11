@@ -106,7 +106,7 @@ end
 Computes current value of capital stock and writeoffs in period
 """
 function update_K_p!(
-    p::AbstractAgent,
+    p::Producer,
     η::Int
     )::Float64
 
@@ -134,7 +134,7 @@ end
 Updates NW of firm based on last period's spending.
 """
 function update_NW_p!(
-    p::AbstractAgent,
+    p::Producer,
     τᴾ::Float64
     )
 
@@ -168,7 +168,7 @@ end
 Computes the amount of interest the firm has to pay over its debts
 """
 function update_interest_payment_p!(
-    p::AbstractAgent,
+    p::Producer,
     r::Float64
     )
 
@@ -198,7 +198,7 @@ end
 Computes carbon tax p has to pay
 """
 function pay_carbontax_p!(
-    p::AbstractAgent,
+    p::Producer,
     government,
     t::Int64
     )
@@ -212,7 +212,7 @@ end
 Computes carbon tax p has to pay
 """
 function pay_energytax_p!(
-    p::AbstractAgent,
+    p::Producer,
     government,
     t::Int64
     )
@@ -250,7 +250,7 @@ end
 Clears firms current account for next period.
 """
 function clear_firm_currentaccount_p!(
-    p::AbstractAgent, 
+    p::Producer, 
 )
 
     p.curracc.S = 0.0

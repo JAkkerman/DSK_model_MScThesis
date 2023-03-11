@@ -1,17 +1,18 @@
 """
 Defines struct for consumer good producer
 """
-@with_kw mutable struct ConsumerGoodProducer <: AbstractAgent
+@with_kw mutable struct ConsumerGoodProducer <: Producer
 
     id::Int64                                 # global agent id
     cp_i::Int64                               # cp index
     age::Int64 = 0                            # firm age
     
-    # Price and cost data
+    # Price, cost and competitiveness
     μ::Vector{Float64}                        # markup rate
     p::Vector{Float64} = fill(1+μ[end], 3)    # hist prices
     c::Vector{Float64} = ones(Float64, 3)     # hist cost
     true_c::Float64 = 0.                      # true unit cost
+    E::Vector{Float64}                        # competitiveness over time
 
     # Production and demand
     D::Vector{Float64}                        # hist demand
@@ -82,6 +83,7 @@ function initialize_cp(
         id = id,
         cp_i = cp_i,
         μ = fill(model.g_param.μ1, 3),
+        E = ones(Float64, 3),
         D = fill(D, 3),
         Dᵉ = D,  
         Nᵈ = model.g_param.ι * D,                
@@ -97,13 +99,38 @@ function initialize_cp(
 
     cp.balance.NW = 1500.
     cp.balance.EQ = 1500.
-
     return cp
 end
 
 
+"""Update markup rate
+
+Dosi (2010) eq. 11b
 """
-Plans production amounts for consumer good producer (short term)
+function update_μ!(cp::ConsumerGoodProducer, model::ABM)
+    shift_and_append!(cp.μ, cp.μ[end] * (1 + model.g_param.v * (cp.f[end-1] - cp.f[end-2]) / cp.f[end-2]))
+end
+
+
+"""Update competitiveness
+
+Dosi (2010) eq. 12
+"""
+function update_E!(cp::ConsumerGoodProducer, model::ABM)
+    shift_and_append!(cp.E, -model.g_param.ω₁ * cp.p[end] - model.g_param.ω₂ * cp.Dᵁ[end-1])
+end
+
+
+"""Update market share
+
+Dosi (2010) eq. 13
+"""
+function update_f!(cp::ConsumerGoodProducer, Ē::Float64,  model::ABM)
+    shift_and_append!(cp.f, cp.f[end-1] * (1 + model.g_param.χ * (cp.E[end] - Ē) / Ē))
+end
+
+
+"""Plans production amounts for consumer good producer (short term)
 - updates ST expected demand
 - determines ST production goals
 - based on ST, set labor demand
@@ -472,7 +499,6 @@ function plan_expansion_cp!(
     brochure = get(model.kp_brochures, Symbol(cp.kp_ids[1]), nothing)
     if cp.possible_I < brochure[:price]
         cp.n_mach_desired_EI = 0
-        # cp.EIᵈ = 0.0
     end
 
     max_mach_poss = floor(Int64, cp.possible_I / brochure[:price])
@@ -895,10 +921,11 @@ function update_Qᵉ_cp!(
     ω::Float64,
     ι::Float64
     )
-
     if length(cp.Ξ) > 0
         cp.Qᵉ = ω * cp.Qᵉ + (1 - ω) * ((1 + ι) * cp.Dᵉ)
     end
+
+    # cp.Qᵉ = max(cp.Dᵉ + cp.Nᵈ - cp.N_goods, 0.0)
 end
 
 

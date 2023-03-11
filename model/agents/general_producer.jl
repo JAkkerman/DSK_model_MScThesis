@@ -1,3 +1,9 @@
+"""Abstract producer struct
+"""
+abstract type Producer <: AbstractAgent end
+
+
+
 function cop(
     w::Float64,
     π_LP::Float64,
@@ -15,10 +21,7 @@ end
 """
 Lets producers select employees to fire.
 """
-function fire_excess_workers_p!(
-    p::Union{ConsumerGoodProducer, CapitalGoodProducer}, 
-    model::ABM
-    )::Vector{Int64}
+function fire_excess_workers_p!(p::Producer, model::ABM)::Vector{Int64}
 
     if p.ΔLᵈ <= -p.L
         # Fire all employees if desired decrease in labor exceeds labor stock.
@@ -59,21 +62,13 @@ end
 """
 Hires workers, adds worker id to worker array, updates labor stock.
 """
-function hire_worker_p!(
-    p::AbstractAgent, 
-    hh::Household
-    )
-
+function hire_worker_p!(p::Producer, hh::Household)
     push!(p.employees, hh.id)
     p.L += hh.L * hh.skill
 end
 
 
-function update_L!(
-    p::Union{ConsumerGoodProducer, CapitalGoodProducer},
-    model::ABM
-    )
-
+function update_L!(p::Producer, model::ABM)
     p.L = length(p.employees) > 0 ? sum(hh_id -> model[hh_id].L * model[hh_id].skill, p.employees) : 0.0
 end
 
@@ -81,11 +76,7 @@ end
 """
 Removes worker from firm
 """
-function remove_worker_p!(
-    p::AbstractAgent,
-    hh::Household
-    )
-
+function remove_worker_p!(p::Producer, hh::Household)
     p.L -= hh.L * hh.skill
     p.employees = filter(hh_id -> hh_id ≠ hh.id, p.employees)
 end
@@ -94,12 +85,7 @@ end
 """
 Loop over workers and pay out wage.
 """
-function pay_workers_p!(
-    p::Union{ConsumerGoodProducer, CapitalGoodProducer},
-    government::Government,
-    t::Int,
-    model::ABM
-    )
+function pay_workers_p!(p::Producer, government::Government, t::Int, model::ABM)
 
     total_wage = 0.0
     total_incometax = 0.0
@@ -119,10 +105,7 @@ end
 """
 Updates wage level for producer.
 """
-function update_w̄_p!(
-    p::AbstractAgent,
-    model::ABM
-    )
+function update_w̄_p!(p::Producer, model::ABM)
 
     if length(p.employees) > 0
         shift_and_append!(p.w̄, mean(hh_id -> model[hh_id].w[end], p.employees))
@@ -135,10 +118,7 @@ end
 """
 Updates market shares of cp firms
 """
-function update_marketshare_p!(
-    all_p::Vector{Int},
-    model::ABM
-    )
+function update_marketshare_p!(all_p::Vector{Int}, model::ABM)
 
     # Compute total market size of bp and lp markets
     market = sum(p_id -> model[p_id].D[end], all_p)
@@ -157,11 +137,7 @@ end
 """
 Adds borrowed amount as an incoming cashflow to current account.
 """
-function borrow_funds_p!(
-    p::AbstractAgent,
-    amount::Float64,
-    b::Int64
-    )
+function borrow_funds_p!(p::Producer, amount::Float64, b::Int64)
 
     # Add debt as repayments for coming periods
     p.debt_installments[2:b+1] .+= amount / b
@@ -175,7 +151,7 @@ end
 """
 Adds to-be-repaid amount as an outgoing cashflow to current account.
 """
-function monthly_debt_payback_p!(p::AbstractAgent, b::Int64)
+function monthly_debt_payback_p!(p::Producer, b::Int64)
 
     # Add repaid debt as outgoing cashflow
     p.curracc.rep_debt = p.debt_installments[begin]
@@ -191,7 +167,7 @@ end
 """
 Pays back additional amount of debt.
 """
-function singular_debt_payback_p!(p::AbstractAgent, excess_NW::Float64)
+function singular_debt_payback_p!(p::Producer, excess_NW::Float64)
 
     payoff_debt = min(p.balance.debt, excess_NW)
     excess_NW_after_debt = excess_NW - payoff_debt
@@ -314,7 +290,7 @@ end
 """
 Checks if producers must be declared bankrupt
 """
-function check_if_bankrupt_p!(p::AbstractAgent, t_wait::Int64)::Bool
+function check_if_bankrupt_p!(p::Producer, t_wait::Int64)::Bool
 
 
     if (typeof(p) == ConsumerGoodProducer && p.age > t_wait 
@@ -348,7 +324,8 @@ end
 Updates the mean skill level of employees.
 """
 function update_mean_skill_p!(
-    p::Union{ConsumerGoodProducer, CapitalGoodProducer},
+    # p::Union{ConsumerGoodProducer, CapitalGoodProducer},
+    p::Producer,
     model::ABM
     )
 
@@ -360,7 +337,8 @@ end
 Computes the markup rate μ based on the market share f.
 """
 function update_μ_p!(
-    p::AbstractAgent,
+    # p::AbstractAgent,
+    p::Producer,
     ϵ_μ::Float64,
     t::Int64
     )

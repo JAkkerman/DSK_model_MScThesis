@@ -1,4 +1,4 @@
-@with_kw mutable struct CapitalGoodProducer <: AbstractAgent
+@with_kw mutable struct CapitalGoodProducer <: Producer
 
     id::Int64                               # global id
     kp_i::Int64                             # kp index

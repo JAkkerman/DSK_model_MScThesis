@@ -22,8 +22,7 @@ include("helpers/update.jl")
 include("global_parameters.jl")
 include("init_parameters.jl")
 
-include("objects/accounting_firms.jl")
-include("objects/accounting_govt.jl")
+
 include("objects/machine.jl")
 include("objects/powerplant.jl")
 include("objects/climate.jl")
@@ -32,9 +31,11 @@ include("agents/government.jl")
 include("agents/indexfund.jl")
 include("macro_markets/macro.jl")
 include("agents/household.jl")
+include("agents/general_producer.jl")
+include("objects/accounting_firms.jl")
+include("objects/accounting_govt.jl")
 include("agents/consumer_good_producer.jl")
 include("agents/capital_good_producer.jl")
-include("agents/general_producer.jl")
 include("agents/energy_producer.jl")
 
 include("macro_markets/labormarket.jl")
@@ -162,10 +163,10 @@ function initialize_model(
 
     # Determine initial amount of employees per producer
     emp_per_producer = floor(Int64, (1 - model.i_param.init_unempl_rate) * model.i_param.n_hh / 
-    (model.i_param.n_cp + model.i_param.n_kp))
+                                    (model.i_param.n_cp + model.i_param.n_kp))
 
     # Determine initial amount of machines per cp
-    n_machines_init = ceil(Int64, 1.1 * emp_per_producer)
+    n_machines_init = ceil(Int64, 10. * emp_per_producer)
 
     # Initialize consumer good producers
     for cp_i in 1:model.i_param.n_cp
@@ -377,16 +378,6 @@ function model_step!(
 
     # Update schedulers
     @timeit timer "schedule" all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
-
-    # # Redistrubute remaining stock of dividents to households
-    # @timeit timer "distr div" distribute_dividends_if!(
-    #     indexfund,
-    #     government,
-    #     all_hh,
-    #     government.τᴷ,
-    #     t,
-    #     model
-    # )
 
     # Redistribute goverment balance
     resolve_gov_balance!(government, indexfund, globalparam, all_hh, t, model)

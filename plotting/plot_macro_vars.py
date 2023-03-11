@@ -3,32 +3,35 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_macro_vars(df):
+def plot_macro_vars(df, warmup=300):
     """
     Plots macro statistics
     """
     
-    _, ax = plt.subplots(3, 2, figsize=(10, 10))
+    _, ax = plt.subplots(4, 2, figsize=(10, 12))
 
     T = range(len(df.GDP))
 
-    # Plot real GDP
-    ax[0,0].plot(T, 100 * df.GDP / df.CPI_cp, label='total GDP')
-    ax[0,0].plot(T, 100 * df.GDP_hh / df.CPI_cp, label='hh share')
-    ax[0,0].plot(T, 100 * df.GDP_cp / df.CPI_cp, label='cp share')
-    ax[0,0].plot(T, 100 * df.GDP_kp / df.CPI_cp, label='kp share')
-    ax[0,0].plot(T, 100 * df.exp_UB / df.CPI_cp, label='UB exp')
-    ax[0,0].plot(T, 100 * df.total_I / df.CPI_cp, label='I')
-    ax[0,0].plot(T, 100 * df.total_C / df.CPI_cp, label='C')
-    ax[0,0].set_title("GDP")
+    # GDP indices and components
+    for idx, label in zip(['GDP', 'GDP_hh', 'GDP_cp', 'GDP_kp'], ['GDP', 'hh', 'cp', 'kp']):
+        real_ts = df[idx][warmup:] / df.CPI_cp[warmup:]
+        ax[0,0].plot(T[warmup:], get_indexnumbers(real_ts, index=warmup), label=label)
+    ax[0,0].set_title("GDP component indices")
     ax[0,0].legend()
 
-    # Unemployment rate
-    ax[0,1].plot(T, df.U, label='unemployment rate')
-    ax[0,1].plot(T, df.switch_rate, label='switching rate')
-    ax[0,1].set_title("Unemployment rate")
-    ax[0,1].set_ylim(0,1)
+
+    for idx, label in zip(['exp_UB', 'total_I', 'total_C'], ['$UB_{t}$', '$I_{t}$', '$C_{t}$']):
+        real_ts = df[idx][warmup:] / df.CPI_cp[warmup:]
+        ax[0,1].plot(T[warmup:], get_indexnumbers(real_ts, index=warmup), label=label)
+    ax[0,1].set_title("Spending indices")
     ax[0,1].legend()
+
+    # Unemployment rate
+    ax[1,1].plot(T, df.U, label='unemployment rate')
+    ax[1,1].plot(T, df.switch_rate, label='switching rate')
+    ax[1,1].set_title("Unemployment rate")
+    ax[1,1].set_ylim(0,1)
+    ax[1,1].legend()
 
     # Money Supply 
     # ax[1,0].plot(T, (df.M - df.debt_tot) - (df.M[0] - df.debt_tot[0]))
@@ -46,23 +49,26 @@ def plot_macro_vars(df):
     ax[1,0].legend()
     ax[1,0].set_title('Money supply')
 
-    # Inflation
-    ax[1,1].plot(T, df.CPI_cp, label='cp')
-    ax[1,1].plot(T, df.CPI_kp, label='kp')
-    ax[1,1].set_title('CPI')
-    ax[1,1].legend()
-
     # Aggregate consumption and investments
-    ax[2,0].plot(T, df.total_C, label="$C$")
-    ax[2,0].plot(T, df.total_C_actual, label="$C$ actual")
-    ax[2,0].plot(T, df.total_I, label="$investments$")
-    ax[2,0].plot(T, df.total_w, label="$wages$")
+    ax[2,0].plot(T, df.total_C_actual / df.GDP, label="$C_{t} / GDP_{t}$", c='blue')
+    ax[2,0].axhline(0.7, c='blue', linestyle='dashed')
+    ax[2,0].plot(T, df.total_I / df.GDP, label="$I_{t} / GDP_{t}$", c='green')
+    ax[2,0].axhline(0.2, c='green', linestyle='dashed')
+    ax[2,0].axhline(0, c='black', linestyle='dotted')
+    ax[2,0].axhline(1, c='black', linestyle='dotted')
     ax[2,0].set_title('Aggregate C and I')
     ax[2,0].legend()
 
-    ax[2,1].plot(T, df.GDP_growth, label='GDP')
+    # ax[2,1].plot(T, df.GDP_growth, label='GDP')
+    ax[2,1].hist(df.GDP_growth[300:], bins=50)
     ax[2,1].set_title('growth rates')
-    ax[2,1].legend()
+    # ax[2,1].legend()
+
+    # Inflation
+    ax[3,0].plot(T, df.CPI_cp, label='cp')
+    ax[3,0].plot(T, df.CPI_kp, label='kp')
+    ax[3,0].set_title('CPI')
+    ax[3,0].legend()
 
     plt.tight_layout()
     plt.savefig('plots/macro_ts.png', bbox_inches='tight')
@@ -107,7 +113,7 @@ def plot_household_vars(df):
     ax[1,0].plot(T, df.s_emp, color='red', label='employed')
     ax[1,0].plot(T, df.s_unemp, color='blue', label='unemployed')
     ax[1,0].plot(T, df.returns_investments, color='green', label='$r_t$')
-    ax[1,0].set_title("Savings rate")
+    ax[1,0].set_title("Savings rate and investment returns")
     ax[1,0].set_ylim(-0.5, 0.5)
     ax[1,0].legend()
 
@@ -120,7 +126,7 @@ def plot_household_vars(df):
     plt.savefig('plots/household_ts.png', bbox_inches='tight')
 
 
-def plot_producer_vars(df):
+def plot_producer_vars(df, warmup=300):
     """
     Plots producer variables
 
@@ -140,10 +146,12 @@ def plot_producer_vars(df):
     ax[0,0].legend()
 
     # Producer debt
-    ax[0,1].plot(T, df.debt_tot, label='total')
-    ax[0,1].plot(T, df.debt_cp, label='cp', color='green')
-    ax[0,1].plot(T, df.debt_kp, label='kp', color='red')
-    ax[0,1].set_title('Debt levels')
+    total_debt_GDP = df.debt_tot[warmup:] / df.GDP[warmup:]
+    ax[0,1].plot(T[warmup:], total_debt_GDP, label='total', c='blue')
+    # ax[0,1].plot(T, df.debt_cp / df.GDP_cp, label='cp', color='green')
+    # ax[0,1].plot(T, df.debt_kp / df.GDP_kp, label='kp', color='red')
+    ax[0,1].set_title('Private debt-to-GDP ratio')
+    ax[0,1].axhline(2.9, label='hist ratio (NL)', linestyle='dashed', c='blue')
     ax[0,1].legend()
 
     # Number of ordered machines
@@ -178,16 +186,25 @@ def plot_producer_vars(df):
     ax[2,1].set_title('Markup rates $\mu$')
 
     # Technology levels
-    ax[3,0].plot(T, df.avg_pi_LP, label='$\\bar{\pi}_{LP}$')
-    ax[3,0].plot(T, df.avg_pi_EE, label='$\\bar{\pi}_{EE}$')
-    ax[3,0].plot(T, df.avg_pi_EF, label='$\\bar{\pi}_{EF}$')
-    ax[3,0].plot(T, df.avg_A_LP, label='$\\bar{A}_{LP}$')
-    ax[3,0].plot(T, df.avg_A_EE, label='$\\bar{A}_{EE}$')
-    ax[3,0].plot(T, df.avg_A_EF, label='$\\bar{A}_{EF}$')
-    ax[3,0].plot(T, df.avg_B_LP, label='$\\bar{B}_{LP}}$')
-    ax[3,0].plot(T, df.avg_B_EE, label='$\\bar{B}_{EE}}$')
-    ax[3,0].plot(T, df.avg_B_EF, label='$\\bar{B}_{EF}}$')
-    ax[3,0].set_title('Productivity')
+    tech_levels = ['avg_pi_LP', 'avg_pi_EE', 'avg_pi_EF', ]
+    tech_labels = ['$\\bar{\pi}_{LP}$', '$\\bar{\pi}_{EE}$', '$\\bar{\pi}_{EF}$']
+    tech_colors = ['blue', 'orange', 'green']
+    tech_hist_trend = [129.34, None, None]
+
+    for idx, l, c, ht in zip(tech_levels, tech_labels, tech_colors, tech_hist_trend):
+        ax[3,0].plot(T, get_indexnumbers(df[idx], index=warmup), label=l, c=c)
+        ax[3,0].plot([warmup, T[-1]], [100, ht], c=c, linestyle='dashed')
+    # ax[3,0].plot(T, df.avg_pi_LP, label='$\\bar{\pi}_{LP}$')
+    # ax[3,0].plot(T, df.avg_pi_EE, label='$\\bar{\pi}_{EE}$')
+    # ax[3,0].plot(T, df.avg_pi_EF, label='$\\bar{\pi}_{EF}$')
+    # ax[3,0].plot(T, df.avg_A_LP, label='$\\bar{A}_{LP}$')
+    # ax[3,0].plot(T, df.avg_A_EE, label='$\\bar{A}_{EE}$')
+    # ax[3,0].plot(T, df.avg_A_EF, label='$\\bar{A}_{EF}$')
+    # ax[3,0].plot(T, df.avg_B_LP, label='$\\bar{B}_{LP}}$')
+    # ax[3,0].plot(T, df.avg_B_EE, label='$\\bar{B}_{EE}}$')
+    # ax[3,0].plot(T, df.avg_B_EF, label='$\\bar{B}_{EF}}$')
+    ax[3,0].axvline(warmup, c='black', linestyle='dotted')
+    ax[3,0].set_title('Productivity indices')
     ax[3,0].legend()
 
     # Unsatisfied labor and investments demand
@@ -568,8 +585,8 @@ def plot_climate(df_climate_energy, df_macro):
     plt.savefig('plots/climate.png')
 
 
-def get_indexnumbers(timeseries):
-    return timeseries / timeseries[0] * 100
+def get_indexnumbers(timeseries, index=0):
+    return timeseries / timeseries[index] * 100
 
 def get_share(timeseries, tottimeseries, tot_index):
     return tot_index * timeseries / tottimeseries

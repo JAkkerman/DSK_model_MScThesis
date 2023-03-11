@@ -1,18 +1,23 @@
 @with_kw mutable struct GlobalParam
-    # Determine technical innovation process
+
+    # Technical innovation
     ν::Float64 = 0.05               # R&D inv propensity (note this a greek 'nu')
     νₑ::Float64 = 0.01              # R&D inv propensity energy producer (note this a greek 'nu')
     ξ::Float64 = 0.3                # R&D allocation to IN
     ξₑ::Float64 = 0.4               # R&D allocation to green tech for energy producer
-    ζ::Float64 = 0.3                # firm search capabilities
-    ζ_ge::Float64 = 0.3             # ep search capabilities for green tech
-    ζ_de::Float64 = 0.3             # ep search capabilities for dirty tech
+    ζ::Float64 = 0.1                # firm search capabilities
+    ζ_ge::Float64 = ζ               # ep search capabilities for green tech
+    ζ_de::Float64 = ζ               # ep search capabilities for dirty tech
     α1::Float64 = 3.0               # 1st beta dist param for IN
     β1::Float64 = 3.0               # 2nd beta dist param for IN
-
     κ_upper::Float64 = 0.005        # 2nd beta dist support
     κ_lower::Float64 = -κ_upper     # 1st beta dist support
     
+    # Market share cp
+    ω₁::Float64 = 1.                # first competitiveness parameter (Dosi (2010))
+    ω₂::Float64 = 1.                # second competitiveness parameter (Dosi (2010))
+    χ::Float64 = 1.                 # replicator dynamics coefficient (Dosi (2010))
+
     γ::Float64 = 0.5                # new custommer sample parameter
     μ1::Float64 = 0.2               # kp markup rule
     v::Float64 = 0.04               # 
@@ -49,7 +54,6 @@
     # Determine household consumption
     α_maxdev::Float64 = 0.01        # maximum deviation household α can make in one time period
     ρ::Float64 = 0.3                # parameter governing utility function steepness
-    # α_cp::Float64 = 0.75            # parameter controlling APC of consumers
 
     # Deterime extend of progresivity of government spending
     prog::Float64 = -0.5
