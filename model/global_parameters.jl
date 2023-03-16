@@ -16,7 +16,7 @@
     # Market share cp
     ω₁::Float64 = 1.                # first competitiveness parameter (Dosi (2010))
     ω₂::Float64 = 1.                # second competitiveness parameter (Dosi (2010))
-    χ::Float64 = 1.                 # replicator dynamics coefficient (Dosi (2010))
+    χ::Float64 = 0.05                 # replicator dynamics coefficient (Dosi (2010))
 
     γ::Float64 = 0.5                # new custommer sample parameter
     μ1::Float64 = 0.2               # kp markup rule

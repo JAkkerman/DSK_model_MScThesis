@@ -205,9 +205,9 @@ function check_bankrupty_all_p!(
     model::ABM
     )::Tuple{Vector{Int}, Vector{Int}, Vector{Int}}
 
-    bankrupt_cp = Vector{Int}()
-    bankrupt_kp = Vector{Int}()
-    bankrupt_kp_i = Vector{Int}()
+    bankrupt_cp = Int64[]
+    bankrupt_kp = Int64[]
+    bankrupt_kp_i = Int64[]
 
     cp_counter = 0
     kp_counter = 0
@@ -251,9 +251,9 @@ function kill_all_bankrupt_p!(
     )
 
     # Remove bankrupt cp ids from households
-    for hh_id in all_hh
-        remove_bankrupt_producers_hh!(model[hh_id], bankrupt_cp)
-    end
+    # for hh_id in all_hh
+    #     remove_bankrupt_producers_hh!(model[hh_id], bankrupt_cp)
+    # end
 
     # Remove bankrupt cp ids from kp historical clients
     for kp_id in all_kp
@@ -291,7 +291,6 @@ end
 Checks if producers must be declared bankrupt
 """
 function check_if_bankrupt_p!(p::Producer, t_wait::Int64)::Bool
-
 
     if (typeof(p) == ConsumerGoodProducer && p.age > t_wait 
         && (p.f[end] <= 0.0001 || p.balance.EQ < 0))

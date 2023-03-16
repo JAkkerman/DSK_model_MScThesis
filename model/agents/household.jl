@@ -142,22 +142,15 @@ Computes consumption budget, updates savings rate
 """
 function compute_consumption_budget_hh!(
     hh::Household,
-    # scale_W̃::Function,
     globalparam::GlobalParam,
     W̃min::Float64,
     W̃max::Float64,
     W̃med::Float64,
     ERt::Float64
-    # W_scaled_min::Float64 = 0.,
-    # W_scaled_max::Float64 = 100.
     )
 
-
-    # if W̃max - W̃min < 1.
-    #     W̃max = W̃min + 1.
-    # end
-
     if hh.W > 0.
+
         # Scale W between 0 and 100
         if hh.W̃ == W̃min
             hh.C = hh.W
@@ -171,7 +164,7 @@ function compute_consumption_budget_hh!(
             hh.C = hh.α * hh.W
         end
 
-        # Compute savings rate
+        # # Compute savings rate
         hh.s = hh.total_I > 0 ? ((hh.total_I + hh.capital_I + hh.socben_I) - hh.C) / (hh.total_I + hh.capital_I + hh.socben_I) : 0.0 
     else
         hh.C = 0.0
@@ -179,8 +172,6 @@ function compute_consumption_budget_hh!(
     end
 end
 
-
-# scale_W̃(W̃, W̃min, W̃max) = 100 * (W̃ - W̃min) / (W̃max - W̃min)
 
 function scale_W̃(
     W̃::Float64,
@@ -245,24 +236,33 @@ end
 """
 Household receives ordered cg and mutates balance
 """
-function receive_ordered_goods_hh!(
-    hh::Household,
-    tot_sales::Float64,
-    unsat_demand::Vector{Float64},
-    hh_D::Vector{Float64},
-    all_cp::Vector{Int64},
-    n_hh::Int64
-    )
-
-    # Decrease wealth with total sold goods
-    hh.W -= tot_sales
-    hh.C_actual += tot_sales
-
-    for cp_id in hh.cp
-        i = cp_id - n_hh
-        hh.unsat_dem[cp_id] = hh_D[i] > 0 ? unsat_demand[i] / hh_D[i] : 0.
-    end
+function receive_goods!(hh::Household, goods_bought::Float64)
+    hh.C_actual = goods_bought
+    hh.W -= goods_bought
 end
+
+
+# """
+# Household receives ordered cg and mutates balance
+# """
+# function receive_ordered_goods_hh!(
+#     hh::Household,
+#     tot_sales::Float64,
+#     unsat_demand::Vector{Float64},
+#     hh_D::Vector{Float64},
+#     all_cp::Vector{Int64},
+#     n_hh::Int64
+#     )
+
+#     # Decrease wealth with total sold goods
+#     hh.W -= tot_sales
+#     hh.C_actual += tot_sales
+
+#     for cp_id in hh.cp
+#         i = cp_id - n_hh
+#         hh.unsat_dem[cp_id] = hh_D[i] > 0 ? unsat_demand[i] / hh_D[i] : 0.
+#     end
+# end
 
 
 """
@@ -367,153 +367,151 @@ function change_employer_hh!(
 end
 
 
-"""
-Removes bankrupt producers from set of producers.
-"""
-function remove_bankrupt_producers_hh!(
-    hh::Household,
-    bankrupt_cp::Vector{Int64}
-    )
+# """
+# Removes bankrupt producers from set of producers.
+# """
+# function remove_bankrupt_producers_hh!(
+#     hh::Household,
+#     bankrupt_cp::Vector{Int64}
+#     )
 
-    filter!(cp_id -> cp_id ∉ bankrupt_cp, hh.cp)
-    delete!(hh.unsat_dem, bankrupt_cp)
-end
+#     filter!(cp_id -> cp_id ∉ bankrupt_cp, hh.cp)
+#     delete!(hh.unsat_dem, bankrupt_cp)
+# end
 
 
-"""
-Decides whether to switch to other cp
-"""
-function decide_switching_all_hh!(
-    globalparam::GlobalParam,
-    all_hh::Vector{Int64},
-    all_cp::Vector{Int64},
-    all_p::Vector{Int64},
-    n_cp_hh::Int64,
-    model::ABM,
-    to
-    )
+# """
+# Decides whether to switch to other cp
+# """
+# function decide_switching_all_hh!(
+#     globalparam::GlobalParam,
+#     all_hh::Vector{Int64},
+#     all_cp::Vector{Int64},
+#     all_p::Vector{Int64},
+#     n_cp_hh::Int64,
+#     model::ABM,
+#     to
+#     )
 
-    for hh_id in all_hh
-        # Check if demand was constrained and for chance of changing cp
-        if length(model[hh_id].unsat_dem) > 0 && rand() < globalparam.ψ_Q
+#     for hh_id in all_hh
+#         # Check if demand was constrained and for chance of changing cp
+#         if length(model[hh_id].unsat_dem) > 0 && rand() < globalparam.ψ_Q
 
-            # Pick a supplier to change, first set up weights inversely proportional
-            # to supplied share of goods
+#             # Pick a supplier to change, first set up weights inversely proportional
+#             # to supplied share of goods
 
-            create_weights(hh::Household, cp_id::Int64)::Float64 = hh.unsat_dem[cp_id] > 0 ? 1 / hh.unsat_dem[cp_id] : 0.0
-            weights = map(cp_id -> create_weights(model[hh_id], cp_id), model[hh_id].cp)
+#             create_weights(hh::Household, cp_id::Int64)::Float64 = hh.unsat_dem[cp_id] > 0 ? 1 / hh.unsat_dem[cp_id] : 0.0
+#             weights = map(cp_id -> create_weights(model[hh_id], cp_id), model[hh_id].cp)
 
-            # Sample producer to replace
-            p_id_replaced = sample(model[hh_id].cp, Weights(weights))[1]
+#             # Sample producer to replace
+#             p_id_replaced = sample(model[hh_id].cp, Weights(weights))[1]
 
-            filter!(p_id -> p_id ≠ p_id_replaced, model[hh_id].cp)
+#             filter!(p_id -> p_id ≠ p_id_replaced, model[hh_id].cp)
 
-            # Add new cp if list not already too long
-            if (length(model[hh_id].cp) < n_cp_hh && length(model[hh_id].cp) < length(all_cp))
+#             # Add new cp if list not already too long
+#             if (length(model[hh_id].cp) < n_cp_hh && length(model[hh_id].cp) < length(all_cp))
                 
-                # p_id_new = sample(setdiff(all_cp, model[hh_id].cp))
-                p_id_new = sample(all_cp)
+#                 # p_id_new = sample(setdiff(all_cp, model[hh_id].cp))
+#                 p_id_new = sample(all_cp)
 
-                count = 0
-                while p_id_new ∈ model[hh_id].cp
-                    p_id_new = sample(all_cp)
+#                 count = 0
+#                 while p_id_new ∈ model[hh_id].cp
+#                     p_id_new = sample(all_cp)
 
-                    # Ugly way to avoid inf loop, will change later
-                    count += 1
-                    if count == 100
-                        break
-                    end
-                end
+#                     # Ugly way to avoid inf loop, will change later
+#                     count += 1
+#                     if count == 100
+#                         break
+#                     end
+#                 end
 
-                if p_id_new ∉ model[hh_id].cp
-                    push!(model[hh_id].cp, p_id_new)
-                    delete!(model[hh_id].unsat_dem, p_id_replaced)
-                    model[hh_id].unsat_dem[p_id_new] = 0.0
-                end
-            end
-        end
+#                 if p_id_new ∉ model[hh_id].cp
+#                     push!(model[hh_id].cp, p_id_new)
+#                     delete!(model[hh_id].unsat_dem, p_id_replaced)
+#                     model[hh_id].unsat_dem[p_id_new] = 0.0
+#                 end
+#             end
+#         end
 
-        # Check if household will look for a better price
-        if rand() < globalparam.ψ_P
+#         # Check if household will look for a better price
+#         if rand() < globalparam.ψ_P
 
 
-            if length(model[hh_id].cp) < length(all_cp)
+#             if length(model[hh_id].cp) < length(all_cp)
 
-                # Randomly select a supplier that may be replaced
-                p_id_candidate1 = sample(model[hh_id].cp)
+#                 # Randomly select a supplier that may be replaced
+#                 p_id_candidate1 = sample(model[hh_id].cp)
 
-                # Randomly pick another candidate from same type and see if price is lower
-                # Ugly sample to boost performance
-                # p_id_candidate2 = sample(setdiff(all_cp, model[hh_id].cp))
+#                 # Randomly pick another candidate from same type and see if price is lower
+#                 # Ugly sample to boost performance
+#                 # p_id_candidate2 = sample(setdiff(all_cp, model[hh_id].cp))
 
-                p_id_candidate2 = sample(all_cp)
+#                 p_id_candidate2 = sample(all_cp)
 
-                count = 0
-                while p_id_candidate2 ∈ model[hh_id].cp
-                    p_id_candidate2 = sample(all_cp)
+#                 count = 0
+#                 while p_id_candidate2 ∈ model[hh_id].cp
+#                     p_id_candidate2 = sample(all_cp)
 
-                    # Ugly way to avoid inf loop, will change later
-                    count += 1
-                    if count == 100
-                        break
-                    end
-                end
+#                     # Ugly way to avoid inf loop, will change later
+#                     count += 1
+#                     if count == 100
+#                         break
+#                     end
+#                 end
                 
-                # Replace supplier if price of other supplier is lower 
-                if model[p_id_candidate2].p[end] < model[p_id_candidate1].p[end] && p_id_candidate2 ∉ model[hh_id].cp
-                    # model[hh_id].cp[findfirst(x->x==p_id_candidate1, model[hh_id].cp)] = p_id_candidate2
-                    filter!(p_id -> p_id ≠ p_id_candidate1, model[hh_id].cp)
-                    push!(model[hh_id].cp, p_id_candidate2)
+#                 # Replace supplier if price of other supplier is lower 
+#                 if model[p_id_candidate2].p[end] < model[p_id_candidate1].p[end] && p_id_candidate2 ∉ model[hh_id].cp
+#                     # model[hh_id].cp[findfirst(x->x==p_id_candidate1, model[hh_id].cp)] = p_id_candidate2
+#                     filter!(p_id -> p_id ≠ p_id_candidate1, model[hh_id].cp)
+#                     push!(model[hh_id].cp, p_id_candidate2)
 
-                    delete!(model[hh_id].unsat_dem, p_id_candidate1)
-                    model[hh_id].unsat_dem[p_id_candidate2] = 0.0
-                end
-            else
-                # If all producers known, throw out producer with highest price
-                p_highest_price = maximum(cp_id -> model[cp_id].p[end], model[hh_id].cp)
-                filter!(p_id -> p_id ≠ p_highest_price, model[hh_id].cp)
-                delete!(model[hh_id].unsat_dem, p_highest_price)
-            end
-        end
-    end
-end
+#                     delete!(model[hh_id].unsat_dem, p_id_candidate1)
+#                     model[hh_id].unsat_dem[p_id_candidate2] = 0.0
+#                 end
+#             else
+#                 # If all producers known, throw out producer with highest price
+#                 p_highest_price = maximum(cp_id -> model[cp_id].p[end], model[hh_id].cp)
+#                 filter!(p_id -> p_id ≠ p_highest_price, model[hh_id].cp)
+#                 delete!(model[hh_id].unsat_dem, p_highest_price)
+#             end
+#         end
+#     end
+# end
 
 
-"""
-Refills amount of bp and lp in amount is below minimum. Randomly draws suppliers
-    inversely proportional to prices.
-"""
-function refillsuppliers_hh!(
-    hh::Household,
-    all_cp::Vector{Int64},
-    n_cp_hh::Int64,
-    model::ABM
-    )
+# """
+# Refills amount of bp and lp in amount is below minimum. Randomly draws suppliers
+#     inversely proportional to prices.
+# """
+# function refillsuppliers_hh!(
+#     hh::Household,
+#     all_cp::Vector{Int64},
+#     n_cp_hh::Int64,
+#     model::ABM
+#     )
 
-    if length(hh.cp) < n_cp_hh
+#     if length(hh.cp) < n_cp_hh
 
-        # Determine which bp are available
-        n_add_cp = n_cp_hh - length(hh.cp)
-        poss_cp = filter(p_id -> p_id ∉ hh.cp, all_cp)
+#         # Determine which bp are available
+#         n_add_cp = n_cp_hh - length(hh.cp)
+#         poss_cp = filter(p_id -> p_id ∉ hh.cp, all_cp)
 
-        # Determine weights based on prices, sample and add
-        weights = map(cp_id -> 1 / model[cp_id].p[end], poss_cp)
-        add_cp = sample(poss_cp, Weights(weights), n_add_cp)
-        hh.cp = vcat(hh.cp, add_cp)
+#         # Determine weights based on prices, sample and add
+#         weights = map(cp_id -> 1 / model[cp_id].p[end], poss_cp)
+#         add_cp = sample(poss_cp, Weights(weights), n_add_cp)
+#         hh.cp = vcat(hh.cp, add_cp)
 
-        for cp_id in add_cp
-            hh.unsat_dem[cp_id] = 0.0
-        end
-    end
-end
+#         for cp_id in add_cp
+#             hh.unsat_dem[cp_id] = 0.0
+#         end
+#     end
+# end
 
 
 """
 Samples wage levels of households from an empirical distribution.
 """
-function sample_skills_hh(
-    initparam::InitParam
-    )::Vector{Float64}
+function sample_skills_hh(initparam::InitParam)::Vector{Float64}
 
     skills = []
     while length(skills) < initparam.n_hh
@@ -536,9 +534,7 @@ end
 Resets types incomes of household back to 0.0. Capital income is reset only before
     the new capital gains are sent.
 """
-function resetincomes_hh!(
-    hh::Household
-    )
+function resetincomes_hh!(hh::Household)
 
     # Capital income and social benefits from end of last period are counted in this period
     hh.total_I = hh.capital_I + hh.socben_I

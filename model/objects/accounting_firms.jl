@@ -133,10 +133,7 @@ end
 """
 Updates NW of firm based on last period's spending.
 """
-function update_NW_p!(
-    p::Producer,
-    τᴾ::Float64
-    )
+function update_NW_p!(p::Producer, τᴾ::Float64)
 
     NW = p.balance.NW
     S = p.curracc.S
@@ -159,7 +156,6 @@ function update_NW_p!(
     end
     
     p.balance.NW = new_NW
-
     p.true_c = p.Q[end] > 0 ? (TCL + TCI + TCE + rep_debt + add_debt + int_debt) / p.Q[end] : p.c[end]
 end
 

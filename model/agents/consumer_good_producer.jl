@@ -12,7 +12,7 @@ Defines struct for consumer good producer
     p::Vector{Float64} = fill(1+μ[end], 3)    # hist prices
     c::Vector{Float64} = ones(Float64, 3)     # hist cost
     true_c::Float64 = 0.                      # true unit cost
-    E::Vector{Float64}                        # competitiveness over time
+    E::Float64                                # competitiveness level
 
     # Production and demand
     D::Vector{Float64}                        # hist demand
@@ -74,7 +74,7 @@ function initialize_cp(
     cp_i::Int64,
     machines::Vector{Machine},
     model::ABM;
-    D::Float64 = 1600.,
+    D₀::Float64 = 3000.,
     w::Float64 = 1.,
     f::Float64 = 1 / model.i_param.n_cp,
 )
@@ -83,13 +83,13 @@ function initialize_cp(
         id = id,
         cp_i = cp_i,
         μ = fill(model.g_param.μ1, 3),
-        E = ones(Float64, 3),
-        D = fill(D, 3),
-        Dᵉ = D,  
-        Nᵈ = model.g_param.ι * D,                
-        N_goods = D * model.g_param.ι,          
-        Q = fill(D * (1 + model.g_param.ι), 3),   
-        Qᵉ = D * (1 + model.g_param.ι),
+        E = 1.,
+        D = fill(D₀, 3),
+        Dᵉ = D₀,  
+        Nᵈ = D₀ * model.g_param.ι,                
+        N_goods = D₀ * model.g_param.ι,          
+        Q = fill(D₀ * (1 + model.g_param.ι), 3),   
+        Qᵉ = D₀ * (1 + model.g_param.ι),
         debt_installments = zeros(Float64, model.g_param.b+1),          
         Ξ = machines,                 
         L = 0,
@@ -108,7 +108,12 @@ end
 Dosi (2010) eq. 11b
 """
 function update_μ!(cp::ConsumerGoodProducer, model::ABM)
-    shift_and_append!(cp.μ, cp.μ[end] * (1 + model.g_param.v * (cp.f[end-1] - cp.f[end-2]) / cp.f[end-2]))
+
+    has_market_share = cp.f[end-2] > 0.
+    if has_market_share
+        new_μ = cp.μ[end] * (1 + model.g_param.v * (cp.f[end-1] - cp.f[end-2]) / cp.f[end-2])
+        shift_and_append!(cp.μ, max(new_μ, 0.))
+    end
 end
 
 
@@ -117,7 +122,10 @@ end
 Dosi (2010) eq. 12
 """
 function update_E!(cp::ConsumerGoodProducer, model::ABM)
-    shift_and_append!(cp.E, -model.g_param.ω₁ * cp.p[end] - model.g_param.ω₂ * cp.Dᵁ[end-1])
+    has_faced_demand = cp.D[end] > 0.
+    if has_faced_demand
+        cp.E = -model.g_param.ω₁ * cp.p[end] - model.g_param.ω₂ * (cp.Dᵁ[end] / (cp.Dᵁ[end] + cp.D[end]))
+    end
 end
 
 
@@ -126,7 +134,22 @@ end
 Dosi (2010) eq. 13
 """
 function update_f!(cp::ConsumerGoodProducer, Ē::Float64,  model::ABM)
-    shift_and_append!(cp.f, cp.f[end-1] * (1 + model.g_param.χ * (cp.E[end] - Ē) / Ē))
+    shift_and_append!(cp.f, cp.f[end] * (1 + model.g_param.χ * (cp.E - Ē) / Ē))
+end
+
+
+"""Process consumer market demand
+
+"""
+function process_demand!(cp::ConsumerGoodProducer, sold_goods, unsat_demand_goods)
+    
+    cp.curracc.S = sold_goods * cp.p[end]
+
+    shift_and_append!(cp.D, sold_goods)
+    shift_and_append!(cp.Dᵁ, unsat_demand_goods)
+
+    inventory_left = cp.N_goods - sold_goods
+    cp.N_goods = ceil(inventory_left, digits=3)
 end
 
 
@@ -145,7 +168,7 @@ function plan_production_cp!(
     n_cp::Int64,
     t::Int64,
     model::ABM
-    )
+)
 
     # Update amount of owned capital and desired inventories
     update_n_machines_cp!(cp, globalparam.freq_per_machine)
@@ -173,10 +196,12 @@ function plan_production_cp!(
     if rand() < 1 / globalparam.p_rigid_time
 
         # Update markup μ
-        update_μ_p!(cp, globalparam.ϵ_μ, t)
+        # update_μ_p!(cp, globalparam.ϵ_μ, t)
+        update_μ!(cp, model)
 
         # Compute price
-        compute_p_cp!(cp, τˢ)
+        # compute_p_cp!(cp, τˢ)
+        update_p!(cp, τˢ)
     end
 end
 
@@ -268,9 +293,9 @@ function check_funding_restrictions_cp!(
     cp.possible_I = NW_no_prod + max_add_debt - TCLᵉ - TCE
 
     # If possible investments negative, decrease labor demand
-    if cp.possible_I < 0
+    if cp.possible_I < 0.
 
-        cp.possible_I = 0
+        cp.possible_I = 0.
 
         poss_prod = (NW_no_prod + max_add_debt) / cop(cp.w̄[end], cp.π_LP, government.τᴱ, p_ep, cp.π_EE, government.τᶜ, cp.π_EF)
         poss_L = poss_prod / cp.π_LP
@@ -387,10 +412,7 @@ end
 """
 Sort machines by cost of production
 """
-function rank_machines_cp!(
-    cp::ConsumerGoodProducer
-)
-
+function rank_machines_cp!(cp::ConsumerGoodProducer)
     sort!(cp.Ξ , by = machine -> machine.cop; rev=true)
 end
 
@@ -400,7 +422,6 @@ Plans replacement investment based on age machines and available new machines
 """
 function plan_replacement_cp!(
     cp::ConsumerGoodProducer,
-    # kp_id::Int64,
     government::Government,
     globalparam::GlobalParam,
     ep::AbstractAgent,
@@ -483,12 +504,7 @@ end
 """
 Plans expansion investments based on expected production.
 """
-function plan_expansion_cp!(
-    cp::ConsumerGoodProducer,
-    globalparam::GlobalParam,
-    # roundnr::Int64,
-    model::ABM
-    )
+function plan_expansion_cp!(cp::ConsumerGoodProducer, globalparam::GlobalParam, model::ABM)
 
     # If no more known capital producers, no orders possible
     # if roundnr > length(cp.kp_ids)
@@ -524,142 +540,6 @@ function plan_expansion_cp!(
         # cp.EIᵈ = 0.0
     end
 end
-
-
-# """
-# Plans replacement investment based on age machines and available new machines
-# """
-# function plan_replacement_cp!(
-#     cp::ConsumerGoodProducer,
-#     government::Government,
-#     globalparam::GlobalParam,
-#     ep::AbstractAgent,
-#     # roundnr::Int64,
-#     t::Int64,
-#     model::ABM
-#     )
-
-#     # If no more known capital producers, no orders possible
-#     if roundnr > length(cp.kp_ids)
-#         cp.n_mach_desired_RS = 0
-#         return
-#     end
-
-#     # Get price and cost of production of chosen kp
-#     brochure = get(model.kp_brochures, Symbol(cp.kp_ids[roundnr]), nothing)
-#     p_star = brochure[:price]
-#     c_star = cop(
-#                     cp.w̄[end], 
-#                     get(brochure, :A_LP, nothing), 
-#                     government.τᴱ, 
-#                     ep.p_ep[t], 
-#                     get(brochure, :A_EE, nothing), 
-#                     government.τᶜ, 
-#                     get(brochure, :A_EF, nothing)
-#                  )
-
-#     # See if machine stock too large in order to decide if need to be replaced
-#     # n_machines_too_many = 0
-#     # if cp.n_machines > cp.Qᵉ
-#     #     n_machines_too_many = cp.n_machines - cp.Qᵉ
-#     # end
-
-#     n_machines_too_many = cp.n_machines > cp.Qᵉ ? cp.n_machines - cp.Qᵉ : 0
-
-#     # Loop over machine stock, select which machines to replace
-#     for machine in cp.Ξ
-
-#         # If machine replaced by order in earlier round, do not check it
-#         if machine ∈ cp.mach_tb_repl || machine ∈ cp.mach_tb_retired
-#             continue
-#         end
-
-#         if machine.age >= globalparam.η
-#             # Machine has reached max age, decide if replaced or not
-#             if n_machines_too_many < machine.freq
-#                 # No machines planned to be written off, replace old machine
-#                 push!(cp.mach_tb_repl, machine)
-#             else
-#                 # Do not replace machine, let it be written off
-#                 push!(cp.mach_tb_retired, machine)
-#                 n_machines_too_many -= machine.freq
-#             end
-
-#         elseif (machine.cop != c_star && p_star / (machine.cop - c_star) <= globalparam.b 
-#                 && machine.age > globalparam.b)
-#             # New machine cheaper to operate, replace old machine
-#             push!(cp.mach_tb_repl, machine)
-#         end
-#     end
-
-
-#     # If no new machines too expensive, no machines replaced
-#     if cp.possible_I < p_star
-#         cp.n_mach_desired_RS = 0
-#         return
-#     end
-
-#     max_mach_poss = floor(Int64, cp.possible_I / p_star)
-
-#     # Sort to-be-replaced machines from lowest to highest production costs
-#     sort!(cp.mach_tb_repl, by=machine->cop(cp.w̄[end], machine.A_LP, government.τᴱ, ep.p_ep[t], 
-#                                            machine.A_EE, government.τᶜ, machine.A_EF), rev=true)
-
-#     # Update total amount of to-be-replaces machines
-#     add_mach_desired = length(cp.mach_tb_repl) - cp.n_mach_ordered_RS
-#     # println(cp.mach_tb_repl, " ", add_mach_desired, " ", max_mach_poss)
-#     cp.n_mach_desired_RS = min(max_mach_poss, add_mach_desired)
-
-#     @assert cp.n_mach_desired_RS >= 0
-
-#     # Compute investment amount corresponding to replacement investments
-#     # cp.RSᵈ = p_star * cp.n_mach_ordered_RS * globalparam.freq_per_machine
-#     # TODO replace with new computation
-# end
-
-
-# """
-# Plans expansion investments based on expected production.
-# """
-# function plan_expansion_cp!(
-#     cp::ConsumerGoodProducer,
-#     globalparam::GlobalParam,
-#     roundnr::Int64,
-#     model::ABM
-#     )
-
-#     # If no more known capital producers, no orders possible
-#     if roundnr > length(cp.kp_ids)
-#         cp.n_mach_desired_EI = 0
-#         return
-#     end
-
-#     brochure = get(model.kp_brochures, Symbol(cp.kp_ids[roundnr]), nothing)
-#     if cp.possible_I < brochure[:price]
-#         cp.n_mach_desired_EI = 0
-#         # cp.EIᵈ = 0.0
-#     end
-
-#     max_mach_poss = floor(Int64, cp.possible_I / brochure[:price])
-
-#     # if cp.Qᵉ > cp.n_machines && cp.cu > 0.8
-#     if cp.Qᵉ > cp.n_machines
-#         # cp.n_mach_ordered_EI = floor(Int64, (cp.Qᵉ - cp.n_machines) / globalparam.freq_per_machine)
-
-#         total_mach_desired = round(Int64, (cp.Qᵉ - cp.n_machines) / globalparam.freq_per_machine)
-#         add_mach_desired = total_mach_desired - cp.n_mach_ordered_EI
-#         cp.n_mach_desired_EI = max(min(max_mach_poss, add_mach_desired), 0)
-#         # println(cp.id, " ", roundnr, " ", add_mach_desired, " ", max_mach_poss, " ", total_mach_desired, " ", cp.n_mach_desired_RS, " ", cp.n_mach_ordered_EI, " ", cp.n_mach_ordered_RS)
-
-#         @assert cp.n_mach_desired_EI >= 0
-
-#         # cp.EIᵈ = brochure[:price] * cp.n_mach_ordered_EI * globalparam.freq_per_machine
-#         # TODO: Find a new way to compute this
-#     else
-#         cp.n_mach_desired_EI = 0
-#         # cp.EIᵈ = 0.0
-#     end
-# end
 
 
 """
@@ -728,18 +608,12 @@ function order_machines_cp!(
 end
 
 
-function reset_queue_cp!(
-    cp::ConsumerGoodProducer
-    )
-
+function reset_queue_cp!(cp::ConsumerGoodProducer)
     cp.order_queue = Vector()
 end
 
 
-function increase_machine_age_cp!(
-    cp::ConsumerGoodProducer
-    )
-
+function increase_machine_age_cp!(cp::ConsumerGoodProducer)
     for machine in cp.Ξ
         machine.age += 1
     end
@@ -848,12 +722,11 @@ function replace_bankrupt_cp!(
         new_cp = initialize_cp(
                     cp_id,
                     cp_i,
-                    # t + 1,
                     Vector{Machine}(),
                     model;
-                    D=D,
+                    D₀=D,
                     w=macro_struct.w_avg[t],
-                    f=0.0
+                    f=0.01
                 )
 
         # Order machines at kp of choice
@@ -893,23 +766,17 @@ UPDATING AND COMPUTING FUNCTIONS
 """
 Updates expected demand based Dᵉ
 """
-function update_Dᵉ_cp!(
-    cp::ConsumerGoodProducer,
-    ω::Float64
-    )
-
-    cp.Dᵉ = cp.age > 1 ? ω * cp.Dᵉ + (1 - ω) * (cp.D[end] + cp.Dᵁ[end]) : cp.Dᵉ
+function update_Dᵉ_cp!(cp::ConsumerGoodProducer, ω::Float64)
+    cp.Dᵉ = ceil(ω * cp.Dᵉ + (1 - ω) * (cp.D[end] + cp.Dᵁ[end]), digits=3)
+    # println("  ", cp.Dᵉ, " ", cp.D[end], " ", cp.Dᵁ[end], " ", cp.L)
 end
 
 
 """
 Updates desired short-term production Qˢ
 """
-function update_Qˢ_cp!(
-    cp::ConsumerGoodProducer
-    )
-
-    cp.Qˢ = max(cp.Dᵉ + cp.Nᵈ - cp.N_goods, 0.0)
+function update_Qˢ_cp!(cp::ConsumerGoodProducer)
+    cp.Qˢ = max(cp.Dᵉ + cp.Nᵈ - cp.N_goods, 0.)
 end
 
 
@@ -932,10 +799,7 @@ end
 """
 Updates capital stock n_machines
 """
-function update_n_machines_cp!(
-    cp::ConsumerGoodProducer,
-    freq_per_machine::Int64
-    )
+function update_n_machines_cp!(cp::ConsumerGoodProducer, freq_per_machine::Int64)
 
     # Retire old machines that are not replaced
     if length(cp.mach_tb_retired) > 0
@@ -949,10 +813,7 @@ end
 """
 Updates weighted producivity of machine stock π_LP
 """
-function update_π_cp!(
-    cp::ConsumerGoodProducer
-    )
-
+function update_π_cp!(cp::ConsumerGoodProducer)
     cp.π_LP = length(cp.Ξ) > 0 ? sum(machine -> (machine.freq * machine.A_LP) / cp.n_machines, cp.Ξ) : 1.0
     cp.π_EE = length(cp.Ξ) > 0 ? sum(machine -> (machine.freq * machine.A_EE) / cp.n_machines, cp.Ξ) : 1.0
     cp.π_EF = length(cp.Ξ) > 0 ? sum(machine -> (machine.freq * machine.A_EF) / cp.n_machines, cp.Ξ) : 1.0
@@ -986,13 +847,7 @@ end
 """
 Compute production cost per unit c
 """
-function compute_c_cp!(
-    cp::ConsumerGoodProducer,
-    p_ep::Float64,
-    τᴱ::Float64,
-    τᶜ::Float64
-    )
-
+function compute_c_cp!(cp::ConsumerGoodProducer, p_ep::Float64, τᴱ::Float64, τᶜ::Float64)
     if cp.L + cp.ΔLᵈ > 0
         c = cop(cp.w̄[end], cp.π_LP, τᴱ, p_ep, cp.π_EE, τᶜ, cp.π_EF)
         shift_and_append!(cp.c, c)
@@ -1002,14 +857,18 @@ function compute_c_cp!(
 end
 
 
+# """
+# Computes price based on cost c and markup μ
+# """
+# function compute_p_cp!(cp::ConsumerGoodProducer, τˢ::Float64)
+#     shift_and_append!(cp.p, (1 + τˢ)*((1 + cp.μ[end]) * max(cp.c[end], cp.true_c)))
+# end
+
+
 """
 Computes price based on cost c and markup μ
 """
-function compute_p_cp!(
-    cp::ConsumerGoodProducer,
-    τˢ::Float64
-    )
-
+function update_p!(cp::ConsumerGoodProducer, τˢ::Float64)
     shift_and_append!(cp.p, (1 + τˢ)*((1 + cp.μ[end]) * max(cp.c[end], cp.true_c)))
 end
 
@@ -1019,13 +878,10 @@ Computes the desired labor supply Lᵈ and the change in labor supply
     Check desired change in labor stock, also check for capital stock
     as hiring more than this would not increase production.
 """
-function update_Lᵈ!(
-    cp::ConsumerGoodProducer, 
-    λ::Float64
-    )
-
+function update_Lᵈ!(cp::ConsumerGoodProducer, λ::Float64)
     cp.Lᵈ = λ * cp.L + (1 - λ) * min(cp.Qˢ / cp.π_LP, cp.n_machines / cp.π_LP)
     cp.ΔLᵈ = max(cp.Lᵈ - cp.L, -cp.L)
+    # println(cp.ΔLᵈ, "wooop")
 end
 
 

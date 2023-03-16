@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plot_macro_vars(df, warmup=300):
+def plot_macro_vars(df, warmup=0):
     """
     Plots macro statistics
     """
@@ -654,9 +654,11 @@ if __name__ == "__main__":
 
     df_macro = pd.read_csv('../results/result_data/model_data_1234.csv')
 
-    plot_macro_vars(df_macro)
+    t_warmup = 0
+
+    plot_macro_vars(df_macro, t_warmup)
     plot_household_vars(df_macro)
-    plot_producer_vars(df_macro)
+    plot_producer_vars(df_macro, t_warmup)
     plot_government_vars(df_macro)
     # plot_cons_vars(df_macro)
 

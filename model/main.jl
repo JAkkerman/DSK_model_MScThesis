@@ -8,7 +8,6 @@ using TimerOutputs
 using DataStructures
 using Parameters
 using SparseArrays
-# using PyCall
 using Dates
 using StaticArrays
 
@@ -193,7 +192,6 @@ function initialize_model(
         cp = initialize_cp(
                 nextid(model),
                 cp_i,
-                # t_next_update,
                 machines,
                 model
             )
@@ -383,13 +381,21 @@ function model_step!(
     resolve_gov_balance!(government, indexfund, globalparam, all_hh, t, model)
 
     # Update firm age
+    # TODO: put in function
     for p_id in all_p
         model[p_id].age += 1
     end
 
+    # Renormalize firm market shares after new firms were introduced
+    # TODO: put in function
+    all_f = sum(cp_id -> model[cp_id].f[end], model.all_cp)
+    for cp_id in model.all_cp
+        model[cp_id].f[end] / all_f
+    end
+
     # Check if households still have enough bp and lp, otherwise sample more
     @timeit timer "hh refill" for hh_id in all_hh
-        refillsuppliers_hh!(model[hh_id], all_cp, initparam.n_cp_hh, model)
+        # refillsuppliers_hh!(model[hh_id], all_cp, initparam.n_cp_hh, model)
         resetincomes_hh!(model[hh_id])
     end
 
@@ -403,6 +409,7 @@ function model_step!(
     # Determine distance matrix between kp
     @timeit timer "dist mat" kp_distance_matrix = get_capgood_euclidian(all_kp, model)
 
+    # kp innovation process
     @timeit timer "kp innov" for kp_id in all_kp
 
         clear_firm_currentaccount_p!(model[kp_id])
@@ -432,10 +439,16 @@ function model_step!(
 
     # (2) consumer good producers estimate demand, set production and set
     # demand for L and K
+
+    # Update cp competitiveness level, compute average competitiveness level
+    for cp_id in all_cp
+        update_E!(model[cp_id], model)
+    end
+    Ē = sum(cp_id -> model[cp_id].E * model[cp_id].f[end], model.all_cp)
+
     @timeit timer "plan prod cp" for cp_id in all_cp
       
         # Plan production for this period
-        # μ_avg = t > 1 ? macroeconomy.μ_cp[t-1] : globalparam.μ1
         plan_production_cp!(
             model[cp_id],
             government, 
@@ -448,10 +461,6 @@ function model_step!(
             model
         )
 
-        # if model[cp_id].t_next_update == t  
-        #     model[cp_id].t_next_update += globalparam.update_period
-        # end
-
         # Reset desired and ordered machines
         reset_desired_ordered_machines_cp!(model[cp_id])
 
@@ -461,13 +470,11 @@ function model_step!(
         # Plan investments for this period
         plan_investment_cp!(model[cp_id], government, all_kp, globalparam, ep, t, model)
 
-        # Rank producers based on cost of acquiring machines
-        # rank_producers_cp!(model[cp_id], government, globalparam.b, all_kp, ep, t, model)
-
-        # rank_machines_cp!(model[cp_id])
-
         # Update expected long-term production
+        # TODO: why is this not above investment planning?
         update_Qᵉ_cp!(model[cp_id], globalparam.ω, globalparam.ι)
+        
+        update_f!(model[cp_id], Ē, model)
     end
 
     # (2) capital good producers set labor demand based on expected ordered machines
@@ -554,7 +561,6 @@ function model_step!(
         update_average_price_hh!(model[hh_id], globalparam.ω, model)
     end
 
-
     W̃min = minimum(hh_id -> model[hh_id].W̃, all_hh)
     W̃max = maximum(hh_id -> model[hh_id].W̃, all_hh)
     W̃med = median(map(hh_id -> model[hh_id].W̃, all_hh))
@@ -575,27 +581,30 @@ function model_step!(
     end
 
     # Consumer market process
-    @timeit timer "consumermarket" consumermarket_process!(
-        all_hh,
-        all_cp,
-        government,
-        globalparam,
-        cmdata,
-        t,
-        model,
-        timer
-    )
+    # @timeit timer "consumermarket" consumermarket_process!(
+    #     all_hh,
+    #     all_cp,
+    #     government,
+    #     globalparam,
+    #     cmdata,
+    #     t,
+    #     model,
+    #     timer
+    # )
+
+    @timeit timer "consumermarket" consumermarket_process!(model)
 
     # Households decide to switch suppliers based on satisfied demand and prices
-    @timeit timer "decide switching hh" decide_switching_all_hh!(
-        globalparam,
-        all_hh,
-        all_cp,
-        all_p,
-        initparam.n_cp_hh,
-        model,
-        timer
-    )
+    # OLD MECHANISM THAT STILL CONTAINS SWITCHING
+    # @timeit timer "decide switching hh" decide_switching_all_hh!(
+    #     globalparam,
+    #     all_hh,
+    #     all_cp,
+    #     all_p,
+    #     initparam.n_cp_hh,
+    #     model,
+    #     timer
+    # )
 
     # (6) kp deliver goods to cp, kp make up profits
     @timeit timer "send machines kp" for kp_id in all_kp
@@ -624,7 +633,7 @@ function model_step!(
     compute_budget_balance(government, t)
 
     # Update market shares of cp and kp
-    update_marketshare_p!(all_cp, model)
+    # update_marketshare_p!(all_cp, model)
     update_marketshare_p!(all_kp, model)
     
     # Select producers that will be declared bankrupt and removed
