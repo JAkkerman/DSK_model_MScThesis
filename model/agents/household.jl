@@ -82,7 +82,7 @@ function set_consumption_budget_hh!(
     compute_consumption_budget_hh!(hh, globalparam, W̃min, W̃max, W̃med, ERt)
 
     # Reset actual spending to zero
-    # hh.C_actual = 0.
+    hh.C_actual = 0.
 end
 
 
@@ -313,7 +313,7 @@ function receiveincome_hh!(
 
     elseif isUB
         hh.UB_I = amount
-        hh.labor_I = 0.0
+        hh.labor_I = 0.
         hh.T_unemp += 1
     elseif socben
         # Transfer income can come from unemployment or other social benefits
@@ -321,7 +321,7 @@ function receiveincome_hh!(
     else
         # If employed, add to labor income, else add to transfer income
         hh.labor_I = amount
-        hh.UB_I = 0.0
+        hh.UB_I = 0.
         shift_and_append!(hh.w, hh.w[end])
     end
 end

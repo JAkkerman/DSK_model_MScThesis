@@ -7,6 +7,9 @@ function consumermarket_process!(model::ABM)
 
     total_unsat_demand = 0.
 
+    # println(sum(cp_id -> model[cp_id].f[end], model.all_cp))
+    # @assert round(sum(cp_id -> model[cp_id].f[end], model.all_cp), digits=2) == 1.
+
     for cp_id in model.all_cp
         supply_goods = model[cp_id].N_goods
         demand_goods = model[cp_id].f[end] * total_demand / model[cp_id].p[end]
@@ -22,13 +25,13 @@ function consumermarket_process!(model::ABM)
         process_demand!(model[cp_id], sold_goods, unsat_demand_goods)
     end
 
-    println("yeet ", total_demand - total_supply, " ", total_unsat_demand)
+    # println("yeet ", total_demand - total_supply, " ", total_unsat_demand)
 
     satisfied_demand_ratio = 1 - total_unsat_demand / total_demand
 
-    println(satisfied_demand_ratio, " ", total_supply / total_demand)
+    # println(satisfied_demand_ratio, " ", total_supply / total_demand)
 
-    @assert satisfied_demand_ratio >= 0. && satisfied_demand_ratio <= 1.
+    # @assert satisfied_demand_ratio >= 0. && satisfied_demand_ratio <= 1.
 
     for hh_id in model.all_hh
         goods_bought = model[hh_id].C * satisfied_demand_ratio

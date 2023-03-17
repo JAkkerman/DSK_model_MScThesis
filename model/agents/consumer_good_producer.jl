@@ -660,19 +660,19 @@ Replaces cp, places cp in firm list of hh.
 function replace_bankrupt_cp!(
     bankrupt_cp::Vector{Int64},
     bankrupt_kp::Vector{Int64},
-    all_hh::Vector{Int64},
-    all_cp::Vector{Int64},
-    all_kp::Vector{Int64},
-    globalparam::GlobalParam,
-    indexfund::IndexFund,
-    macro_struct::MacroEconomy,
-    t::Int64,
+    # all_hh::Vector{Int64},
+    # all_cp::Vector{Int64},
+    # all_kp::Vector{Int64},
+    # globalparam::GlobalParam,
+    # indexfund::IndexFund,
+    # macro_struct::MacroEconomy,
+    # t::Int64,
     model::ABM
     )
 
     # Create vectors containing ids of non-bankrupt bp, lp and kp
-    nonbankrupt_cp = setdiff(all_cp, bankrupt_cp)
-    nonbankrupt_kp = setdiff(all_kp, bankrupt_kp)
+    nonbankrupt_cp = setdiff(model.all_cp, bankrupt_cp)
+    nonbankrupt_kp = setdiff(model.all_kp, bankrupt_kp)
 
     # Compute average number of machines and NW for non-bankrupt cp
     avg_n_machines = mean(cp_id -> model[cp_id].n_machines, nonbankrupt_cp)
@@ -686,8 +686,8 @@ function replace_bankrupt_cp!(
     n_bankrupt_cp = length(bankrupt_cp)
 
     # Sample all NW coefficients and capital coefficients
-    capital_coefficients = rand(Uniform(globalparam.φ1, globalparam.φ2), n_bankrupt_cp)
-    NW_coefficients = rand(Uniform(globalparam.φ3, globalparam.φ4), n_bankrupt_cp)
+    capital_coefficients = rand(Uniform(model.g_param.φ1, model.g_param.φ2), n_bankrupt_cp)
+    NW_coefficients = rand(Uniform(model.g_param.φ3, model.g_param.φ4), n_bankrupt_cp)
 
     # New cp receive an advanced type of machine, first select kp ids proportional
     # to their market share. cp can also select kp ids that went bankrupt in this 
@@ -698,24 +698,24 @@ function replace_bankrupt_cp!(
 
     for i in 1:n_bankrupt_cp
         # Decide from which kp to buy
-        kp_choice_ids[i] = sample(all_kp, Weights(weights_kp))
+        kp_choice_ids[i] = sample(model.all_kp, Weights(weights_kp))
         kp_choice_ps[i] = model[kp_choice_ids[i]].p[end]
 
         # Compute the number of machines each cp will buy
-        all_n_machines[i] = floor(Int64, capital_coefficients[i] * avg_n_machines / globalparam.freq_per_machine)
+        all_n_machines[i] = floor(Int64, capital_coefficients[i] * avg_n_machines / model.g_param.freq_per_machine)
     end
 
     # Compute share of investments that can be paid from the investment fund
-    req_NW = (avg_NW .* NW_coefficients) .+ (all_n_machines .* (kp_choice_ps .* globalparam.freq_per_machine))
+    req_NW = (avg_NW .* NW_coefficients) .+ (all_n_machines .* (kp_choice_ps .* model.g_param.freq_per_machine))
     all_req_NW = sum(req_NW)
-    frac_NW_if = decide_investments_if!(indexfund, all_req_NW, t)
+    frac_NW_if = decide_investments_if!(model.idxf, all_req_NW, model.t)
 
     n_kp_sample = min(length(weights_kp), 10)
 
     for (cp_i, cp_id) in enumerate(bankrupt_cp)
 
         # Sample what the size of the capital stock will be
-        D = macro_struct.cu[t] * all_n_machines[cp_i] * globalparam.freq_per_machine
+        D = model.macroeconomy.cu[model.t] * all_n_machines[cp_i] * model.g_param.freq_per_machine
 
         # In the first period, the cp has no machines yet, these are delivered at the end
         # of the first period
@@ -724,9 +724,9 @@ function replace_bankrupt_cp!(
                     cp_i,
                     Vector{Machine}(),
                     model;
-                    D₀=D,
-                    w=macro_struct.w_avg[t],
-                    f=0.01
+                    D₀ = D,
+                    w = model.macroeconomy.w_avg[model.t],
+                    f = 0.01
                 )
 
         # Order machines at kp of choice
@@ -740,7 +740,7 @@ function replace_bankrupt_cp!(
 
         # Borrow remaining required funds for the machine, the other part of the 
         # funds come from the investment fund
-        borrow_funds_p!(new_cp, (1 - frac_NW_if) * req_NW[cp_i], globalparam.b)
+        borrow_funds_p!(new_cp, (1 - frac_NW_if) * req_NW[cp_i], model.g_param.b)
 
         add_agent!(new_cp, model)
 
@@ -754,7 +754,6 @@ function replace_bankrupt_cp!(
         # for hh_id ∈ customers
         #     push!(model[hh_id].cp, cp_id)
         # end
-
     end
 end
 

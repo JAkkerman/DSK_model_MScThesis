@@ -384,13 +384,6 @@ function model_step!(model::ABM)::ABM
         model[p_id].age += 1
     end
 
-    # Renormalize firm market shares after new firms were introduced
-    # TODO: put in function
-    all_f = sum(cp_id -> model[cp_id].f[end], model.all_cp)
-    for cp_id in model.all_cp
-        model[cp_id].f[end] / all_f
-    end
-
     # Check if households still have enough bp and lp, otherwise sample more
     @timeit timer "hh refill" for hh_id in all_hh
         # refillsuppliers_hh!(model[hh_id], all_cp, initparam.n_cp_hh, model)
@@ -547,8 +540,6 @@ function model_step!(model::ABM)::ABM
     
     # (6) Transactions take place on consumer market
 
-    # all_W = map(hh_id -> model[hh_id].W, all_hh)
-
     # TODO: change to actual expected returns
     ERt = t == 1 ? 0.07 : macroeconomy.returns_investments[t-1]
 
@@ -692,19 +683,18 @@ function model_step!(model::ABM)::ABM
         model
     )
 
-    # Replace bankrupt companies with new companies
     @timeit timer "replace cp" replace_bankrupt_cp!(
         bankrupt_cp, 
         bankrupt_kp, 
-        all_hh,
-        all_cp,
-        all_kp,
-        globalparam,
-        indexfund,
-        macroeconomy,
-        t,
         model
     )
+
+    # Renormalize firm market shares after new firms were introduced
+    # TODO: put in function
+    all_f = map(i -> sum(cp_id -> model[cp_id].f[i], model.all_cp), 1:3)
+    for cp_id in model.all_cp
+        model[cp_id].f ./= all_f
+    end
 
     # Redistribute remaining stock of dividents to households
     @timeit timer "distr div" distribute_dividends_if!(
