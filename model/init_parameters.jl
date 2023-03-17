@@ -20,7 +20,7 @@
     # n_machines_init::Int64 = 400           # number of machines of cp at init
 
     # Init params of hh
-    n_cp_hh::Int64 = 25                   # number of cp of hh (also min amount)
+    # n_cp_hh::Int64 = 25                   # number of cp of hh (also min amount)
     skill_mean::Float64 = 0.              # mean value for lognormal skill distribution
     skill_var::Float64 = 0.75             # variance value for lognormal skill distribution
     βmin::Float64 = 0.7                   # minimum value discount factor

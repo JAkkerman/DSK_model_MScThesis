@@ -229,9 +229,9 @@ function initialize_model(
     end
 
     # Let all households select cp of both types for trading network
-    for hh_id in model.all_hh
-        select_cp_hh!(model[hh_id], all_cp, model.i_param.n_cp_hh)
-    end
+    # for hh_id in model.all_hh
+    #     select_cp_hh!(model[hh_id], all_cp, model.i_param.n_cp_hh)
+    # end
 
     # Spread employed households over producerss
     spread_employees_lm!(
@@ -351,9 +351,7 @@ function initialize_datacategories(
 end
 
 
-function model_step!(
-    model::ABM
-)::ABM
+function model_step!(model::ABM)::ABM
 
     # TODO incorporate this in all the functions
     t = model.t
@@ -366,7 +364,7 @@ function model_step!(
     labormarket = model.labormarket 
     indexfund = model.idxf 
     climate = model.climate 
-    cmdata = model.cmdata
+    # cmdata = model.cmdata
 
     # Check if any global params are changed in ofat experiment
     check_changed_ofatparams(globalparam, t)
@@ -556,9 +554,10 @@ function model_step!(
 
     # Households set consumption budget
     
+    P̄ = mean(cp_id -> model[cp_id].p[end] * model[cp_id].f[end], model.all_cp)
     for hh_id in all_hh
         # Update average price level of cp
-        update_average_price_hh!(model[hh_id], globalparam.ω, model)
+        update_average_price_hh!(model[hh_id], P̄, globalparam.ω, model)
     end
 
     W̃min = minimum(hh_id -> model[hh_id].W̃, all_hh)
@@ -593,6 +592,11 @@ function model_step!(
     # )
 
     @timeit timer "consumermarket" consumermarket_process!(model)
+
+    # Compute savings using actual spending
+    for hh_id in model.all_hh
+        compute_savings(model[hh_id])
+    end
 
     # Households decide to switch suppliers based on satisfied demand and prices
     # OLD MECHANISM THAT STILL CONTAINS SWITCHING

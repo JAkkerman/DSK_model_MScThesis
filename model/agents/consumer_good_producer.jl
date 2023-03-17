@@ -680,7 +680,7 @@ function replace_bankrupt_cp!(
 
     # Make weights for allocating cp to hh
     # Minimum is taken to avoid weird outcomes when all bp and lp went bankrupt
-    weights_hh_cp = map(hh_id -> min(1, 1 / length(model[hh_id].cp)), all_hh)
+    # weights_hh_cp = map(hh_id -> min(1, 1 / length(model[hh_id].cp)), all_hh)
     weights_kp = map(kp_id -> max(model[kp_id].f[end], 0.01), nonbankrupt_kp)
 
     n_bankrupt_cp = length(bankrupt_cp)
@@ -746,14 +746,14 @@ function replace_bankrupt_cp!(
 
         # Add new cp to subset of households, inversely proportional to amount of suppliers
         # they already have
-        n_init_hh = 100
+        # n_init_hh = 100
 
-        customers = sample(all_hh, Weights(weights_hh_cp), n_init_hh)
+        # customers = sample(all_hh, Weights(weights_hh_cp), n_init_hh)
     
-        # Add cp to list of hh
-        for hh_id ∈ customers
-            push!(model[hh_id].cp, cp_id)
-        end
+        # # Add cp to list of hh
+        # for hh_id ∈ customers
+        #     push!(model[hh_id].cp, cp_id)
+        # end
 
     end
 end

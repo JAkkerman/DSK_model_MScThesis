@@ -9,7 +9,7 @@
     w::Vector{Float64} = ones(Float64, 4)       # wage
     wˢ::Float64 = 1.0                           # satisfying wage
     wʳ::Float64 = 1.0                           # requested wage
-    T_unemp::Int64 = 0                            # time periods unemployed
+    T_unemp::Int64 = 0                          # time periods unemployed
     skill::Float64                              # skill level of household
 
     # Income and wealth variables
@@ -22,7 +22,7 @@
     W::Float64 = 200.                           # wealth or cash on hand
     W̃::Float64 = 200.                           # real wealth level
 
-    α::Float64 = 0.8                            # Household's consumption fraction of wealth
+    α::Float64 = 1.                             # Household's consumption fraction of wealth
     β::Float64 = 1.                             # Household's discount factor
 
     # Expected income sources
@@ -34,28 +34,27 @@
     # Consumption variables
     C::Float64 = 0.0                           # budget
     C_actual::Float64 = 0.0                    # actual spending on consumption goods
-    cp::Vector{Int64} = Int64[]                # connected cp
-    unsat_dem::Dict{Int64, Float64} = Dict()   # unsatisfied demands
+    # cp::Vector{Int64} = Int64[]                # connected cp
+    # unsat_dem::Dict{Int64, Float64} = Dict()   # unsatisfied demands
     P̄::Float64 = 1.0                           # weighted average price of bp
     P̄ᵉ::Float64 = 1.0                          # expected weighted average price of bp
-    c_L::Float64 = 0.5                         # share of income used to buy luxury goods
 end
 
 
-"""
-Uniformly samples cp to be in trading network.
-"""
-function select_cp_hh!(
-    hh::Household,
-    all_cp::Vector{Int64},
-    n_cp_hh::Int64
-    )
+# """
+# Uniformly samples cp to be in trading network.
+# """
+# function select_cp_hh!(
+#     hh::Household,
+#     all_cp::Vector{Int64},
+#     n_cp_hh::Int64
+#     )
 
-    hh.cp = sample(all_cp, n_cp_hh)
-    for cp_id in hh.cp
-        hh.unsat_dem[cp_id] = 0.0
-    end
-end
+#     hh.cp = sample(all_cp, n_cp_hh)
+#     for cp_id in hh.cp
+#         hh.unsat_dem[cp_id] = 0.0
+#     end
+# end
 
 
 """
@@ -83,7 +82,7 @@ function set_consumption_budget_hh!(
     compute_consumption_budget_hh!(hh, globalparam, W̃min, W̃max, W̃med, ERt)
 
     # Reset actual spending to zero
-    hh.C_actual = 0.0
+    # hh.C_actual = 0.
 end
 
 
@@ -113,11 +112,7 @@ function update_expected_incomes_hh!(
 end
 
 
-function utility(
-    C::Float64,
-    ρ::Float64
-    )   
-
+function utility(C::Float64, ρ::Float64)   
     return (C ^ (1 - ρ)) / (1 - ρ)
 end
 
@@ -125,13 +120,8 @@ end
 """
 Computes average price level of available bp and lp
 """
-function update_average_price_hh!(
-    hh::Household,
-    ω::Float64,
-    model::ABM
-    )
-
-    hh.P̄ = mean(cp_id -> model[cp_id].p[end], hh.cp)
+function update_average_price_hh!(hh::Household, P̄::Float64, ω::Float64, model::ABM)
+    # hh.P̄ = mean(cp_id -> model[cp_id].p[end], hh.cp)
     hh.P̄ᵉ = ω * hh.P̄ᵉ + (1 - ω) * hh.P̄
     hh.W̃ = hh.W / hh.P̄
 end
@@ -165,10 +155,19 @@ function compute_consumption_budget_hh!(
         end
 
         # # Compute savings rate
-        hh.s = hh.total_I > 0 ? ((hh.total_I + hh.capital_I + hh.socben_I) - hh.C) / (hh.total_I + hh.capital_I + hh.socben_I) : 0.0 
+        # hh.s = hh.total_I > 0 ? (hh.total_I - hh.C) / (hh.total_I) : 0.0 
     else
         hh.C = 0.0
-        hh.s = 0.0
+        # hh.s = 0.0
+    end
+end
+
+
+function compute_savings(hh::Household)
+    if hh.total_I > 0.
+        hh.s = hh.total_I > 0 ? (hh.total_I - hh.C_actual) / (hh.total_I) : 0.0 
+    else
+        hh.s = 0.
     end
 end
 
@@ -340,12 +339,7 @@ end
 """
 Lets employee be hired when previously unemployed, saves employer id and new earned wage.
 """
-function set_employed_hh!(
-    hh::Household, 
-    wᴼ::Float64,
-    employer_id::Int64,
-    )
-
+function set_employed_hh!(hh::Household, wᴼ::Float64, employer_id::Int64)
     hh.employed = true
     hh.employer_id = employer_id
     hh.T_unemp = 0
@@ -356,12 +350,7 @@ end
 """
 Changes employer for households that were already employed.
 """
-function change_employer_hh!(
-    hh::Household,
-    wᴼ::Float64,
-    employer_id::Int64
-    )
-
+function change_employer_hh!(hh::Household, wᴼ::Float64, employer_id::Int64)
     hh.employer_id = employer_id
     shift_and_append!(hh.w, wᴼ)
 end
@@ -474,35 +463,6 @@ end
 #                 filter!(p_id -> p_id ≠ p_highest_price, model[hh_id].cp)
 #                 delete!(model[hh_id].unsat_dem, p_highest_price)
 #             end
-#         end
-#     end
-# end
-
-
-# """
-# Refills amount of bp and lp in amount is below minimum. Randomly draws suppliers
-#     inversely proportional to prices.
-# """
-# function refillsuppliers_hh!(
-#     hh::Household,
-#     all_cp::Vector{Int64},
-#     n_cp_hh::Int64,
-#     model::ABM
-#     )
-
-#     if length(hh.cp) < n_cp_hh
-
-#         # Determine which bp are available
-#         n_add_cp = n_cp_hh - length(hh.cp)
-#         poss_cp = filter(p_id -> p_id ∉ hh.cp, all_cp)
-
-#         # Determine weights based on prices, sample and add
-#         weights = map(cp_id -> 1 / model[cp_id].p[end], poss_cp)
-#         add_cp = sample(poss_cp, Weights(weights), n_add_cp)
-#         hh.cp = vcat(hh.cp, add_cp)
-
-#         for cp_id in add_cp
-#             hh.unsat_dem[cp_id] = 0.0
 #         end
 #     end
 # end

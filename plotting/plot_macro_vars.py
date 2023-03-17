@@ -46,7 +46,8 @@ def plot_macro_vars(df, warmup=0):
     ax[1,0].plot(T, df.debt_tot, label='total debts')
     ax[1,0].axhline(df.M[0], linestyle='dotted', alpha=0.5, color='black')
     ax[1,0].axhline(0, linestyle='dotted', alpha=0.5, color='black')
-    ax[1,0].legend()
+    ax[1,0].axvline(125)
+    # ax[1,0].legend()
     ax[1,0].set_title('Money supply')
 
     # Aggregate consumption and investments

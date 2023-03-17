@@ -1,46 +1,9 @@
-# function consumermarket_process!(model::ABM)
-
-#     # TODO hh should observe overall mean price level
-#     total_demand = sum(hh_id -> model[hh_id].C, model.all_hh)
-#     total_supply = sum(cp_id -> model[cp_id].N_goods, model.all_cp)
-#     total_unsat_demand = 0.
-
-#     for cp_id in model.all_cp
-#         supply_goods = model[cp_id].N_goods
-#         demand_goods = model[cp_id].f[end] * total_demand / model[cp_id].p[end]
-
-#         unsat_demand_goods = 0.
-#         if demand_goods > supply_goods
-#             unsat_demand_goods = demand_goods - supply_goods
-#             total_unsat_demand += unsat_demand_goods * model[cp_id].p[end]
-#         end
-
-#         # TODO: add sales tax
-#         sold_goods = min(supply_goods, demand_goods)
-#         process_demand!(model[cp_id], sold_goods, unsat_demand_goods)
-#     end
-
-#     println("yeet ", total_demand, " ", total_supply, " ", total_unsat_demand)
-
-#     satisfied_demand_ratio = 1 - total_unsat_demand / total_demand
-
-#     println(satisfied_demand_ratio, " ", total_supply / total_demand)
-
-#     @assert satisfied_demand_ratio >= 0. && satisfied_demand_ratio <= 1.
-
-#     for hh_id in model.all_hh
-#         goods_bought = model[hh_id].C * satisfied_demand_ratio
-#         receive_goods!(model[hh_id], goods_bought)
-#     end
-# end
-
-
 function consumermarket_process!(model::ABM)
 
     # TODO hh should observe overall mean price level
     total_demand = sum(hh_id -> model[hh_id].C, model.all_hh)
     total_supply = sum(cp_id -> model[cp_id].N_goods * model[cp_id].p[end], model.all_cp)
-    satisfied_demand_ratio = min(total_supply / total_demand, 1.)
+    # satisfied_demand_ratio = min(total_supply / total_demand, 1.)
 
     total_unsat_demand = 0.
 
