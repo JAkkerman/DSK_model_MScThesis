@@ -332,26 +332,26 @@ function update_mean_skill_p!(
 end
 
 
-"""
-Computes the markup rate μ based on the market share f.
-"""
-function update_μ_p!(
-    # p::AbstractAgent,
-    p::Producer,
-    ϵ_μ::Float64,
-    t::Int64
-    )
+# """
+# Computes the markup rate μ based on the market share f.
+# """
+# function update_μ_p!(
+#     # p::AbstractAgent,
+#     p::Producer,
+#     ϵ_μ::Float64,
+#     t::Int64
+#     )
 
-    new_μ = p.μ[end]
-    shock = ϵ_μ * rand()
+#     new_μ = p.μ[end]
+#     shock = ϵ_μ * rand()
 
-    if p.age > 2 && t > 2
-        dp = p.μ[end] - p.μ[end - 1]
-        dΠ = p.Π[end] - p.Π[end - 1]
-        new_μ *= (1 + shock * sign(dp) * sign(dΠ))
-    else
-        new_μ *= (1 + shock * sample([-1., 1.]))
-    end
+#     if p.age > 2 && t > 2
+#         dp = p.μ[end] - p.μ[end - 1]
+#         dΠ = p.Π[end] - p.Π[end - 1]
+#         new_μ *= (1 + shock * sign(dp) * sign(dΠ))
+#     else
+#         new_μ *= (1 + shock * sample([-1., 1.]))
+#     end
 
-    shift_and_append!(p.μ, new_μ)
-end
+#     shift_and_append!(p.μ, new_μ)
+# end

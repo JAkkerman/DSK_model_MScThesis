@@ -5,41 +5,56 @@
     # Employment variables
     employed::Bool = false                      # is employed
     employer_id::Union{Int64} = 0               # id of employer
-    L::Float64 = 100.0                          # labor units in household
-    w::Vector{Float64} = ones(Float64, 4)       # wage
-    wˢ::Float64 = 1.0                           # satisfying wage
-    wʳ::Float64 = 1.0                           # requested wage
+    L::Float64                                  # labor units in household
+    w::Vector{Float64}                          # wage
+    wˢ::Float64                                 # satisfying wage
+    wʳ::Float64                                 # requested wage
     T_unemp::Int64 = 0                          # time periods unemployed
     skill::Float64                              # skill level of household
 
     # Income and wealth variables
     total_I::Float64 = L * skill                # total income from all factors
     labor_I::Float64 = L * skill                # income from labor
-    capital_I::Float64 = 0.0                    # income from capital
-    UB_I::Float64 = 0.0                         # income from unemployment benefits
-    socben_I::Float64 = 0.0                     # income from social benefits (outside of UB)
-    s::Float64 = 0.0                            # savings rate
-    W::Float64 = 200.                           # wealth or cash on hand
-    W̃::Float64 = 200.                           # real wealth level
+    capital_I::Float64 = 0.                     # income from capital
+    UB_I::Float64 = 0.                          # income from unemployment benefits
+    socben_I::Float64 = 0.                      # income from social benefits (outside of UB)
+    s::Float64 = 0.                             # savings rate
+    W::Float64                                  # wealth or cash on hand
+    W̃::Float64                                  # real wealth level
 
-    α::Float64 = 1.                             # Household's consumption fraction of wealth
-    β::Float64 = 1.                             # Household's discount factor
+    # Consumption parameters and variables
+    α::Float64                                 # Household's consumption fraction of wealth
+    β::Float64                                 # Household's discount factor
+    C::Float64 = 0.0                           # consumption budget
+    C_actual::Float64 = 0.0                    # actual spending on consumption goods
+    P̄::Float64 = 1.0                           # weighted average price of cp
+    P̄ᵉ::Float64 = 1.0                          # expected weighted average price of cp
 
     # Expected income sources
     EYL_t::Float64 = L * skill                  # expected labor income
-    EYS_t::Float64 = 0.0                        # expected social benefits income
+    EYS_t::Float64 = 0.                         # expected social benefits income
     EY_t::Float64 = EYL_t + EYS_t               # expected income from labor and social benefits
     ER_t::Float64 = 0.05                        # expected returns on capital
-
-    # Consumption variables
-    C::Float64 = 0.0                           # budget
-    C_actual::Float64 = 0.0                    # actual spending on consumption goods
-    # cp::Vector{Int64} = Int64[]                # connected cp
-    # unsat_dem::Dict{Int64, Float64} = Dict()   # unsatisfied demands
-    P̄::Float64 = 1.0                           # weighted average price of bp
-    P̄ᵉ::Float64 = 1.0                          # expected weighted average price of bp
 end
 
+
+function initialize_hh(model::ABM)::Household
+
+    hh = Household(
+        id = nextid(model), 
+        L = model.i_param.L₀,
+        w = model.i_param.w₀ * ones(Float64, 4),
+        wˢ = model.i_param.w₀,
+        wʳ = model.i_param.w₀,
+        skill = rand(LogNormal(model.i_param.skill_mean, model.i_param.skill_var)),
+        W = model.i_param.W₀,
+        W̃ = model.i_param.W₀,
+        α = model.i_param.α₀,
+        β = rand(Uniform(model.i_param.βmin, model.i_param.βmax))
+      )
+    hh.wʳ = max(model.gov.w_min, hh.wʳ)
+    return hh
+end
 
 # """
 # Uniformly samples cp to be in trading network.

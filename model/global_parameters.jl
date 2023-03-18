@@ -16,7 +16,7 @@
     # Market share cp
     ω₁::Float64 = 1.                # first competitiveness parameter (Dosi (2010))
     ω₂::Float64 = 1.                # second competitiveness parameter (Dosi (2010))
-    χ::Float64 = 0.05                 # replicator dynamics coefficient (Dosi (2010))
+    χ::Float64 = 0.05                # replicator dynamics coefficient (Dosi (2010))
 
     γ::Float64 = 0.5                # new custommer sample parameter
     μ1::Float64 = 0.2               # kp markup rule
@@ -43,7 +43,7 @@
     cu::Float64 = 0.75              # capacity utilization for cp
     max_NW_ratio::Float64 = 0.5     # maximum ratio p can have monthly expenses in NW
     ϵ_w::Float64 = 0.03             # minimum desired wage increase rate
-    ϵ_μ::Float64 = 0.01             # upper limit of markup shock
+    ϵ_μ::Float64 = 0.05             # upper limit of markup shock
     Kg_max::Float64 = 0.5           # maximum capital growth rate
 
     # Determine expectation updating cp

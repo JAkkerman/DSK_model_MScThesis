@@ -150,13 +150,7 @@ function initialize_model(
 
     # Initialize households
     for _ in 1:model.i_param.n_hh
-
-        hh = Household(
-                        id = nextid(model), 
-                        skill = rand(LogNormal(model.i_param.skill_mean, model.i_param.skill_var)),
-                        β = rand(Uniform(model.i_param.βmin, model.i_param.βmax))
-                      )
-        hh.wʳ = max(model.gov.w_min, hh.wʳ)
+        hh = initialize_hh(model)
         add_agent!(hh, model)
     end
 

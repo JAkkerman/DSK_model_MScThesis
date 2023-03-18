@@ -176,7 +176,7 @@ end
 Computes profit of p in previous time period and profit tax that has to be paid.
 """
 function compute_Π_p!(
-    p::AbstractAgent,
+    p::Producer,
     government;
     writeoffs=0.0::Float64
     )

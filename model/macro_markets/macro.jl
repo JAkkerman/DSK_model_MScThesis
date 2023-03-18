@@ -291,8 +291,11 @@ function compute_GDP!(
     total_Π_kp = sum(kp_id -> model[kp_id].Π[end], model.all_kp)
     model.macroeconomy.GDP_kp[model.t] = total_Π_kp
 
+    # ep profits
+    Π_ep = model.ep.net_profit[model.t]
+
     # total GDP
-    model.macroeconomy.GDP[model.t] = total_I + total_Π_cp + total_Π_kp
+    model.macroeconomy.GDP[model.t] = total_I + total_Π_cp + total_Π_kp + Π_ep
 
     # quarterly real GDP growth
     if model.t > 3

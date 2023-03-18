@@ -1,4 +1,4 @@
-@with_kw mutable struct EnergyProducer <: AbstractAgent
+@with_kw mutable struct EnergyProducer <: Producer
     T::Int64=T                                    # Total number of iterations
 
     D_ep::Vector{Float64} = zeros(Float64, T)     # Demand for energy units over time
@@ -6,7 +6,7 @@
 
     # Prices, cost and investments
     markup_ep::Float64                            # Markup to determine price
-    profit_ep::Vector{Float64} = zeros(Float64, T) # Profits over time
+    net_profit::Vector{Float64} = zeros(Float64, T) # Profits over time
     NW_ep::Vector{Float64} = zeros(Float64, T)    # Stock of liquid assets over time
     p_ep::Vector{Float64} = zeros(Float64, T)     # Price of energy over time
     PC_ep::Vector{Float64} = zeros(Float64, T)    # Cost of generating Dₑ(t) units of energy over time
@@ -19,6 +19,7 @@
     RSd_ep::Vector{Float64} = zeros(Float64, T)   # Desired amount of units of replacement investments
     EC_ep::Vector{Float64} = zeros(Float64, T)    # Cost of expansionary investment
     carbontax::Vector{Float64} = zeros(Float64, T)# Paid carbon taxes
+    profittax::Vector{Float64} = zeros(Float64, T)# Paid profit taxes
 
     # Technological parameters
     IC_g::Vector{Float64}                       # Fixed investment cost of the cheapest new green power plant
@@ -142,13 +143,26 @@ function produce_energy_ep!(
     compute_FU_ICₑ_ep!(ep, globalparam.p_f, t)
 
     compute_PCₑ_ep!(ep, t)
-
     compute_emissions_ep!(ep, t)
-    pay_carbontax_ep!(ep, government, t)
 
-    # Compute profits
-    compute_Πₑ_NWₑ_ep!(ep, t)
+    # Close current account after production and investments
+    close_curracc!(ep, government, indexfund, t)
+end
+
+
+function close_curracc!(ep::EnergyProducer, government::Government, indexfund::IndexFund, t)
+
+    compute_carbontax!(ep, government, t)
+
+    # compute_Πₑ_NWₑ_ep!(ep, t)
+    compute_profit!(ep, government, t)
+
+    update_NW!(ep, t)
     pay_dividends_ep!(ep, indexfund, t)
+
+    # Pay taxes
+    pay_carbontax!(ep, government, t)
+    pay_profittax!(ep, government, t)
 end
 
 
@@ -186,17 +200,13 @@ end
 function pay_dividends_ep!(ep::EnergyProducer, indexfund::IndexFund, t::Int64)
 
     # TODO: describe
-
-    b = 1.
-
-    # ep should have at least enough NW to pay cost of production for b months plus an
+    # ep should have at least enough NW to pay cost of production for a month plus an
     # investment in a green plant
     # Pay expenses to if, as 'indeterminate' producer receives these expenses,
 
-    total_expenses = ep.PC_ep[t] + ep.IC_ep[t] + ep.RD_ep[t]
-    req_NW = b * total_expenses
+    req_NW = ep.PC_ep[t] + ep.IC_ep[t] + ep.RD_ep[t]
     poss_dividends = max(ep.NW_ep[t] - req_NW, 0)
-    dividends = total_expenses + poss_dividends
+    dividends = req_NW + poss_dividends
     ep.NW_ep[t] = min(ep.NW_ep[t], req_NW)
 
     receive_dividends_if!(indexfund, dividends)
@@ -206,7 +216,6 @@ end
 """
 INVESTMENT
 """
-
 
 """
 Investment process of ep
@@ -226,7 +235,7 @@ end
 
 
 """
-
+Expand and replace powerplants
 """
 function expand_and_replace_pp_ep!(
     ep::EnergyProducer,
@@ -310,11 +319,7 @@ INNOVATION
 """
 Innocation process
 """
-function innovate_ep!(
-    ep::EnergyProducer,
-    globalparam::GlobalParam,
-    t::Int64
-    )
+function innovate_ep!(ep::EnergyProducer, globalparam::GlobalParam, t::Int64)
 
     # Compute R&D spending (Lamperti et al (2018), eq 18)
     ep.RD_ep[t] = t > 1 ? globalparam.νₑ * ep.p_ep[t-1] * ep.D_ep[t-1] : 0.0
@@ -370,19 +375,51 @@ COMPUTE AND UPDATE FUNCTIONS
 """
 
 
+"""Computes the amount of carbontax to be paid
+
 """
-Computes the profits and new liquid assets resulting from last periods production.
-    Lamperti et al (2018), eq 10.
-"""
-function compute_Πₑ_NWₑ_ep!(ep::EnergyProducer, t::Int64)
-    ep.profit_ep[t] = ep.p_ep[t] * ep.D_ep[t] - ep.PC_ep[t] - ep.IC_ep[t] - ep.RD_ep[t] - ep.carbontax[t]
-    ep.NW_ep[t] = t > 1 ? ep.NW_ep[t-1] + ep.profit_ep[t] : ep.profit_ep[t]
+function compute_carbontax!(ep::EnergyProducer, government::Government, t)
+    ep.carbontax[t] = government.τᶜ * ep.emissions[t]
 end
 
 
+# """Computes the profits and new liquid assets resulting from last periods production.
+    
+# Lamperti et al (2018), eq 10.
+# """
+# function compute_Πₑ_NWₑ_ep!(ep::EnergyProducer, t::Int64)
+#     ep.net_profit[t] = ep.p_ep[t] * ep.D_ep[t] - ep.PC_ep[t] - ep.IC_ep[t] - ep.RD_ep[t] - ep.carbontax[t]
+#     ep.NW_ep[t] = t > 1 ? ep.NW_ep[t-1] + ep.net_profit[t] : ep.net_profit[t]
+# end
+
+
+"""Computes the net profits and profit tax resulting from last periods production.
+    
+Lamperti et al (2018), eq 10.
 """
-Computes cost of production PCₑ of infra marginal power plants
-    Lamperti et al (2018), eq 12.
+function compute_profit!(ep::EnergyProducer, government::Government, t)
+    gross_profit = ep.p_ep[t] * ep.D_ep[t] - ep.PC_ep[t] - ep.IC_ep[t] - ep.RD_ep[t] - ep.carbontax[t]
+    if gross_profit > 0.
+        ep.net_profit[t] = (1 - government.τᴾ) * gross_profit
+        ep.profittax[t] = government.τᴾ * gross_profit
+    else
+        ep.net_profit[t] = gross_profit
+        ep.profittax[t] = 0.
+    end
+end
+
+
+"""Computes the liquid assets resulting from last periods production.
+    
+"""
+function update_NW!(ep::EnergyProducer, t::Int64)
+    ep.NW_ep[t] = t > 1 ? ep.NW_ep[t-1] + ep.net_profit[t] : ep.net_profit[t]
+end
+
+
+"""Computes cost of production PCₑ of infra marginal power plants
+
+Lamperti et al (2018), eq 12.
 """
 function compute_PCₑ_ep!(ep::EnergyProducer, t::Int64)
     dirty_cost = 0.
@@ -408,9 +445,9 @@ function compute_pₑ_ep!(ep::EnergyProducer, t::Int64)
 end
 
 
-"""
-Updates capacity figures for green and dirty technologies
-    Lamperti et al (2018) eq 14.
+"""Updates capacity figures for green and dirty technologies
+
+Lamperti et al (2018) eq 14.
 """
 function update_capacities_ep!(ep::EnergyProducer, t::Int64)
     ep.green_capacity[t] = length(ep.green_portfolio) > 0 ? sum(pp -> pp.freq, ep.green_portfolio) : 0.0
@@ -418,9 +455,9 @@ function update_capacities_ep!(ep::EnergyProducer, t::Int64)
 end
 
 
-"""
-Computes the maximum production level Q̄
-    Lamperti et al (2018) eq 15.
+"""Computes the maximum production level Q̄
+    
+Lamperti et al (2018) eq 15.
 """
 function compute_Q̄_ep!(ep::EnergyProducer, t::Int64)
     ep.Qmax_ep[t] = ep.green_capacity[t] 
@@ -430,9 +467,9 @@ function compute_Q̄_ep!(ep::EnergyProducer, t::Int64)
 end
 
 
-"""
-Computes the desired expansion investment
-    Lamperti et al (2018) eq 16.
+"""Computes the desired expansion investment
+    
+Lamperti et al (2018) eq 16.
 """
 function compute_EIᵈ_ep!(ep::EnergyProducer, t::Int64)
     ep.EId_ep[t] = ep.Qmax_ep[t] < ep.D_ep[t] ? ep.D_ep[t] - (ep.green_capacity[t] + ep.dirty_capacity[t]) : 0.0
@@ -497,9 +534,7 @@ end
 """
 Updates age of power plants
 """
-function update_age_pp_ep!(
-    ep::EnergyProducer
-    )
+function update_age_pp_ep!(ep::EnergyProducer)
 
     for pp in Iterators.flatten((ep.green_portfolio, ep.dirty_portfolio))
         pp.age += 1
@@ -535,15 +570,13 @@ function compute_emissions_ep!(
 end
 
 
-function pay_carbontax_ep!(
-    ep::EnergyProducer,
-    government::Government,
-    t::Int64
-    )
+function pay_carbontax!(ep::EnergyProducer, government::Government, t)
+    receive_carbontax_gov!(government, ep.carbontax[t], t)
+end
 
-    ep.carbontax[t] = government.τᶜ * ep.emissions[t]
-    # TODO move this to a gov function
-    government.rev_carbontax[t] += ep.carbontax[t]
+
+function pay_profittax!(ep::EnergyProducer, government::Government, t)
+    receive_profittax!(government, ep.profittax[t], t)
 end
 
 

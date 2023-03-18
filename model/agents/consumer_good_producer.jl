@@ -74,31 +74,38 @@ function initialize_cp(
     cp_i::Int64,
     machines::Vector{Machine},
     model::ABM;
-    D₀::Float64 = 3000.,
-    w::Float64 = 1.,
-    f::Float64 = 1 / model.i_param.n_cp,
+    D₀::Float64 = model.i_param.D₀_cp,
+    w₀::Float64 = model.i_param.w₀_cp,
+    f₀::Float64 = model.i_param.f₀_cp,
 )
+
+    # D₀ = model.i_param.D₀_cp
+    # w₀ = model.i_param.w₀_cp
+    # f₀ = model.i_param.f₀_cp
+    ι = model.g_param.ι
+    μ = model.g_param.μ1
+    b = model.g_param.b
 
     cp = ConsumerGoodProducer(
         id = id,
         cp_i = cp_i,
-        μ = fill(model.g_param.μ1, 3),
+        μ = fill(μ, 3),
         E = 1.,
         D = fill(D₀, 3),
         Dᵉ = D₀,  
-        Nᵈ = D₀ * model.g_param.ι,                
-        N_goods = D₀ * model.g_param.ι,          
-        Q = fill(D₀ * (1 + model.g_param.ι), 3),   
-        Qᵉ = D₀ * (1 + model.g_param.ι),
-        debt_installments = zeros(Float64, model.g_param.b+1),          
+        Nᵈ = D₀ * ι,                
+        N_goods = D₀ * ι,          
+        Q = fill(D₀ * (1 + ι), 3),   
+        Qᵉ = D₀ * (1 + ι),
+        debt_installments = zeros(Float64, b+1),          
         Ξ = machines,                 
         L = 0,
-        w̄ = fill(w, 3),
-        f = fill(f, 3)
+        w̄ = fill(w₀, 3),
+        f = fill(f₀, 3)
     )
 
-    cp.balance.NW = 1500.
-    cp.balance.EQ = 1500.
+    cp.balance.NW = model.i_param.NWₒ_cp
+    cp.balance.EQ = cp.balance.NW
     return cp
 end
 
@@ -111,7 +118,9 @@ function update_μ!(cp::ConsumerGoodProducer, model::ABM)
 
     has_market_share = cp.f[end-2] > 0.
     if has_market_share
-        new_μ = cp.μ[end] * (1 + model.g_param.v * (cp.f[end-1] - cp.f[end-2]) / cp.f[end-2])
+        Δμ = model.g_param.v * (cp.f[end-1] - cp.f[end-2]) / cp.f[end-2]
+        Δμ = max(min(Δμ, model.g_param.ϵ_μ), -model.g_param.ϵ_μ)
+        new_μ = cp.μ[end] * (1 + Δμ)
         shift_and_append!(cp.μ, max(new_μ, 0.))
     end
 end
@@ -725,8 +734,8 @@ function replace_bankrupt_cp!(
                     Vector{Machine}(),
                     model;
                     D₀ = D,
-                    w = model.macroeconomy.w_avg[model.t],
-                    f = 0.01
+                    w₀ = model.macroeconomy.w_avg[model.t],
+                    f₀ = 0.01
                 )
 
         # Order machines at kp of choice

@@ -46,8 +46,7 @@ def plot_macro_vars(df, warmup=0):
     ax[1,0].plot(T, df.debt_tot, label='total debts')
     ax[1,0].axhline(df.M[0], linestyle='dotted', alpha=0.5, color='black')
     ax[1,0].axhline(0, linestyle='dotted', alpha=0.5, color='black')
-    ax[1,0].axvline(125)
-    # ax[1,0].legend()
+    ax[1,0].legend()
     ax[1,0].set_title('Money supply')
 
     # Aggregate consumption and investments
@@ -625,8 +624,6 @@ def plot_emissions(df:pd.DataFrame, t_warmup:int=300, t_cutoff:int=200):
              label='$c^{total}_t$')
     ax2.plot(T, df.carbon_emissions_cp / df.GDP_cp, 
              label='$c^{cp}_t$')
-    # ax2.plot(T[t_cutoff:], df.carbon_emissions_kp[t_cutoff:] / df.GDP_kp[t_cutoff:], 
-    #          label='$c^{kp}_t$')
     ax2.axvline(t_warmup, color='black', linestyle='dotted')
     ax2.set_xlabel('time')
     ax2.set_ylabel('carbon units per output unit')
@@ -640,36 +637,29 @@ def plot_emissions(df:pd.DataFrame, t_warmup:int=300, t_cutoff:int=200):
     plt.savefig('plots/emissions.png')
 
 
-def plot_LIS(df_macro):
+# def plot_LIS(df_macro):
 
-    x = np.arange(300, 661, 60)
-    years = np.arange(2020, 2051, 5)
+#     x = np.arange(300, 661, 60)
+#     years = np.arange(2020, 2051, 5)
 
-    plt.figure(figsize=(6,4))
-    plt.plot(df_macro.LIS.iloc[300:])
-    plt.xticks(x, years)
-    plt.show()
+#     plt.figure(figsize=(6,4))
+#     plt.plot(df_macro.LIS.iloc[300:])
+#     plt.xticks(x, years)
+#     plt.show()
 
     
 if __name__ == "__main__":
 
     df_macro = pd.read_csv('../results/result_data/model_data_1234.csv')
 
-    t_warmup = 0
+    t_warmup = 300
 
     plot_macro_vars(df_macro, t_warmup)
     plot_household_vars(df_macro)
     plot_producer_vars(df_macro, t_warmup)
     plot_government_vars(df_macro)
-    # plot_cons_vars(df_macro)
+    plot_cons_vars(df_macro)
 
-    # plot_income_dist()
     plot_inequality(df_macro)
-    # plot_sales_dist()
-
-    # df_climate_energy = pd.read_csv('../results/result_data/climate_and_energy.csv')
     plot_energy(df_macro)
-    # plot_climate(df_climate_energy, df_macro)
     plot_emissions(df_macro)
-
-    # plot_LIS(df_macro)

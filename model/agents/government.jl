@@ -174,7 +174,7 @@ function levy_profit_tax_gov!(
         end
     end
 
-    government.rev_profittax[t] = total_τᴾ
+    government.rev_profittax[t] += total_τᴾ
 end
 
 
@@ -230,12 +230,16 @@ end
 """
 Lets government receive carbon taxes from producers
 """
-function receive_carbontax_gov!(
-    government::Government,
-    carbontax::Float64,
-    t::Int64
-)
-    government.rev_carbontax[t] += carbontax
+function receive_carbontax_gov!(government::Government, carbontax_amount, t)
+    government.rev_carbontax[t] += carbontax_amount
+end
+
+
+"""
+Lets government receive profit taxes from producers
+"""
+function receive_profittax!(government::Government, profittax_amount, t)
+    government.rev_profittax[t] += profittax_amount
 end
 
 
@@ -290,16 +294,3 @@ function resolve_gov_balance!(
         government.MS = 0.0
     end
 end
-
-
-# """
-# Determines the rate of income tax that should be paid over the agent's income.
-#     This will be a flat rate by default, and can be ammended to be a progressive tax.
-# """
-# function determine_incometaxrate(
-#     government::Government,
-#     income::Float64
-# )::Float64
-
-#     return government.τᴵ
-# end

@@ -152,7 +152,7 @@ function choose_technology_kp!(
     ep
     )
 
-    update_μ_p!(kp, globalparam.ϵ_μ, t)
+    # update_μ_p!(kp, globalparam.ϵ_μ, t)
 
     # Make choice between possible technologies
     if length(tech_choices) > 1
