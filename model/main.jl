@@ -315,7 +315,7 @@ function initialize_datacategories(
 
         # Define data of energy producer to save
         model.epdata_tosave = [
-            :D_ep, :Qmax_ep, :green_capacity, :dirty_capacity,
+            :D_ep, :Qmax_ep, :debt_ep, :green_capacity, :dirty_capacity,
             :RD_ep, :IN_g, :IN_d, :p_ep 
         ]
 

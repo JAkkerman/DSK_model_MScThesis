@@ -402,10 +402,11 @@ function update_debt!(
     )
 
     model.macroeconomy.debt_cp[t] = sum(cp_id -> model[cp_id].balance.debt, all_cp)
-
     model.macroeconomy.debt_kp[t] = sum(kp_id -> model[kp_id].balance.debt, all_kp)
 
-    model.macroeconomy.debt_tot[t] = model.macroeconomy.debt_cp[t] + model.macroeconomy.debt_kp[t]
+    model.macroeconomy.debt_tot[t] = (model.macroeconomy.debt_cp[t] 
+                                      + model.macroeconomy.debt_kp[t]
+                                      + model.ep.debt_ep[t])
 
     model.macroeconomy.debt_cp_allowed[t] = Λ * sum(cp_id -> model[cp_id].curracc.S, all_cp)
 

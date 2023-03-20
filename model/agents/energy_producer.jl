@@ -3,14 +3,18 @@
 
     D_ep::Vector{Float64} = zeros(Float64, T)     # Demand for energy units over time
     Qmax_ep::Vector{Float64} = zeros(Float64, T)  # Maximum production of units over time
+    FU::Vector{Float64} = zeros(Float64, T)       # Number of fuel units used for production
 
     # Prices, cost and investments
     markup_ep::Float64                            # Markup to determine price
+    p_ep::Vector{Float64} = zeros(Float64, T)     # Price of energy over time
+
     net_profit::Vector{Float64} = zeros(Float64, T) # Profits over time
     NW_ep::Vector{Float64} = zeros(Float64, T)    # Stock of liquid assets over time
-    p_ep::Vector{Float64} = zeros(Float64, T)     # Price of energy over time
+    debt_ep::Vector{Float64} = zeros(Float64, T)  # debt level over time
+    debt_installments::Vector{Float64}            # debt installments
+
     PC_ep::Vector{Float64} = zeros(Float64, T)    # Cost of generating Dₑ(t) units of energy over time
-    FU::Vector{Float64} = zeros(Float64, T)       # Number of fuel units used for production
     IC_ep::Vector{Float64} = zeros(Float64, T)    # Expansion and replacement investments over time
     RD_ep::Vector{Float64} = zeros(Float64, T)    # R&D expenditure over time
     IN_g::Vector{Float64} = zeros(Float64, T)     # R&D spending allocated to innovation in green tech
@@ -18,12 +22,14 @@
     EId_ep::Vector{Float64} = zeros(Float64, T)   # Desired amount of units of expansionary investments
     RSd_ep::Vector{Float64} = zeros(Float64, T)   # Desired amount of units of replacement investments
     EC_ep::Vector{Float64} = zeros(Float64, T)    # Cost of expansionary investment
-    carbontax::Vector{Float64} = zeros(Float64, T)# Paid carbon taxes
-    profittax::Vector{Float64} = zeros(Float64, T)# Paid profit taxes
+
+    # Taxes
+    carbontax::Vector{Float64} = zeros(Float64, T) # Paid carbon taxes
+    profittax::Vector{Float64} = zeros(Float64, T) # Paid profit taxes
 
     # Technological parameters
     IC_g::Vector{Float64}                       # Fixed investment cost of the cheapest new green power plant
-    A_therm_ep::Vector{Float64} = zeros(Float64, T)   # Thermal efficiency of new power plants
+    A_therm_ep::Vector{Float64} = zeros(Float64, T)  # Thermal efficiency of new power plants
     emnew_ep::Vector{Float64} = zeros(Float64, T)  # Emissions of new power plants
     c_d::Vector{Float64} = zeros(Float64, T)    # Discounted production cost of the cheapest dirty plant 
 
@@ -85,6 +91,7 @@ function initialize_energy_producer(
     # Initialize ep struct
     energy_producer = EnergyProducer(
                         T = T,
+                        debt_installments = zeros(Float64, globalparam.bₑ + 1),
                         green_portfolio = green_portfolio,
                         dirty_portfolio = dirty_portfolio,
                         markup_ep = initparam.markup_ep,
@@ -146,23 +153,23 @@ function produce_energy_ep!(
     compute_emissions_ep!(ep, t)
 
     # Close current account after production and investments
-    close_curracc!(ep, government, indexfund, t)
+    close_curracc!(ep, model, t)
 end
 
 
-function close_curracc!(ep::EnergyProducer, government::Government, indexfund::IndexFund, t)
+function close_curracc!(ep::EnergyProducer, model::ABM, t)
 
-    compute_carbontax!(ep, government, t)
+    compute_carbontax!(ep, model.gov, t)
 
-    # compute_Πₑ_NWₑ_ep!(ep, t)
-    compute_profit!(ep, government, t)
+    debt_installment = iterate_debt_installment!(ep)
+    
+    compute_profit!(ep, model.gov, debt_installment, t)
 
-    update_NW!(ep, t)
-    pay_dividends_ep!(ep, indexfund, t)
+    update_NW!(ep, model.idxf, model.g_param.bₑ, debt_installment, t)
 
     # Pay taxes
-    pay_carbontax!(ep, government, t)
-    pay_profittax!(ep, government, t)
+    pay_carbontax!(ep, model.gov, t)
+    pay_profittax!(ep, model.gov, t)
 end
 
 
@@ -197,19 +204,24 @@ function choose_powerplants_ep!(ep::EnergyProducer, t::Int64)
 end
 
 
-function pay_dividends_ep!(ep::EnergyProducer, indexfund::IndexFund, t::Int64)
+# function pay_dividends_ep!(ep::EnergyProducer, indexfund::IndexFund, t::Int64)
 
-    # TODO: describe
-    # ep should have at least enough NW to pay cost of production for a month plus an
-    # investment in a green plant
-    # Pay expenses to if, as 'indeterminate' producer receives these expenses,
+#     # TODO: describe
+#     # ep should have at least enough NW to pay cost of production for a month plus an
+#     # investment in a green plant
+#     # Pay expenses to if, as 'indeterminate' producer receives these expenses,
 
-    req_NW = ep.PC_ep[t] + ep.IC_ep[t] + ep.RD_ep[t]
-    poss_dividends = max(ep.NW_ep[t] - req_NW, 0)
-    dividends = req_NW + poss_dividends
-    ep.NW_ep[t] = min(ep.NW_ep[t], req_NW)
+#     req_NW = compute_req_NW(ep, t)
+#     poss_dividends = max(ep.NW_ep[t] - req_NW, 0.)
+#     dividends = req_NW + poss_dividends
+#     ep.NW_ep[t] = min(ep.NW_ep[t], req_NW)
 
-    receive_dividends_if!(indexfund, dividends)
+#     receive_dividends_if!(indexfund, dividends)
+# end
+
+
+function compute_req_NW(ep::EnergyProducer, t)
+    return ep.PC_ep[t] + ep.IC_ep[t] + ep.RD_ep[t]
 end
 
 
@@ -397,8 +409,15 @@ end
     
 Lamperti et al (2018), eq 10.
 """
-function compute_profit!(ep::EnergyProducer, government::Government, t)
-    gross_profit = ep.p_ep[t] * ep.D_ep[t] - ep.PC_ep[t] - ep.IC_ep[t] - ep.RD_ep[t] - ep.carbontax[t]
+function compute_profit!(ep::EnergyProducer, government::Government, 
+                         debt_installment, t)
+    gross_profit = (ep.p_ep[t] * ep.D_ep[t] 
+                        - ep.PC_ep[t] 
+                        - ep.IC_ep[t] 
+                        - ep.RD_ep[t] 
+                        - debt_installment
+                        - ep.carbontax[t]
+                    )
     if gross_profit > 0.
         ep.net_profit[t] = (1 - government.τᴾ) * gross_profit
         ep.profittax[t] = government.τᴾ * gross_profit
@@ -412,8 +431,40 @@ end
 """Computes the liquid assets resulting from last periods production.
     
 """
-function update_NW!(ep::EnergyProducer, t::Int64)
-    ep.NW_ep[t] = t > 1 ? ep.NW_ep[t-1] + ep.net_profit[t] : ep.net_profit[t]
+function update_NW!(ep::EnergyProducer, indexfund::IndexFund, bₑ, debt_installment, t)
+
+    new_NW = t > 1 ? ep.NW_ep[t-1] + ep.net_profit[t] : ep.net_profit[t]
+    # new_NW -= debt_installment
+    req_NW = compute_req_NW(ep, t)
+
+    poss_dividends = 0.
+
+    # Check if debt is needed
+    if req_NW > new_NW
+        debt_required = req_NW - new_NW
+        ep.debt_installments[begin:end-1] .+= debt_required / bₑ
+    else
+        poss_dividends += new_NW - req_NW
+    end
+
+    dividends = req_NW + poss_dividends
+    ep.NW_ep[t] = req_NW
+
+    update_debt!(ep, t)
+    receive_dividends_if!(indexfund, dividends)
+end
+
+
+function iterate_debt_installment!(ep::EnergyProducer)
+    debt_installment = ep.debt_installments[begin]
+    ep.debt_installments[begin:end-1] .= ep.debt_installments[begin+1:end]
+    ep.debt_installments[end] = 0.
+    return debt_installment
+end
+
+
+function update_debt!(ep::EnergyProducer, t)
+    ep.debt_ep[t] = sum(ep.debt_installments)
 end
 
 

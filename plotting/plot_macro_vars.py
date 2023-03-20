@@ -34,7 +34,7 @@ def plot_macro_vars(df, warmup=0):
     ax[1,1].legend()
 
     # Money Supply 
-    # ax[1,0].plot(T, (df.M - df.debt_tot) - (df.M[0] - df.debt_tot[0]))
+    M_0 = df.M[0] - df.debt_tot[0]
     ax[1,0].plot(T, df.M - df.debt_tot, 
                  label='total', zorder=5, linestyle='dashed')
     ax[1,0].plot(T, df.M_hh, label='hh')
@@ -44,7 +44,7 @@ def plot_macro_vars(df, warmup=0):
     ax[1,0].plot(T, df.M_gov, label='gov')
     ax[1,0].plot(T, df.M_if, label='if')
     ax[1,0].plot(T, df.debt_tot, label='total debts')
-    ax[1,0].axhline(df.M[0], linestyle='dotted', alpha=0.5, color='black')
+    ax[1,0].axhline(M_0, linestyle='dotted', alpha=0.5, color='black')
     ax[1,0].axhline(0, linestyle='dotted', alpha=0.5, color='black')
     ax[1,0].legend()
     ax[1,0].set_title('Money supply')

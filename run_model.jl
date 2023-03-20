@@ -27,7 +27,7 @@ run_simulation(
     show_full_output = true,
     showprogress = true,
     seed = seed,
-    changed_taxrates = [(:τᶜ, 0.01, 0.25)]
+    changed_taxrates = [(:τᶜ, 0.01, 0.05)]
 )
 
 nothing

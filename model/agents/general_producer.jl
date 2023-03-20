@@ -148,6 +148,9 @@ function borrow_funds_p!(p::Producer, amount::Float64, b::Int64)
 end
 
 
+# function update_debt!()
+
+
 """
 Adds to-be-repaid amount as an outgoing cashflow to current account.
 """
