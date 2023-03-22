@@ -8,6 +8,8 @@
     firing_producers::Vector{Int64} = Int64[] # array of firing producers 
 
     L_demanded::Float64 = 0.                  # total labor demanded
+    L_offered::Float64 = 0.                   # total labor offered
+
     L_hired::Float64 = 0.                     # total labor hired
     L_fired::Float64 = 0.                     # total labor fired
     E::Float64 = 0.                           # unemployment rate
@@ -104,12 +106,11 @@ function labormarket_process!(
     # Update jobseeking households
     labormarket.jobseeking_hh = vcat(employed_jobseekers, labormarket.unemployed_hh)
 
+    labormarket.L_offered = sum(hh_id -> model[hh_id].L * model[hh_id].skill, 
+                                          model.labormarket.jobseeking_hh)
+
     # Labor market matching process
-    @timeit to "matching" matching_lm(
-        labormarket,
-        all_p, 
-        model,
-    )
+    @timeit to "matching" matching_lm(labormarket, model)
 
     # Update the unemployment rate
     update_unemploymentrate_lm!(labormarket)
@@ -192,60 +193,51 @@ end
 """
 Matches job-seeking households with employee-seeking firms
 """
-function matching_lm(
-    labormarket::LaborMarket,
-    all_p::Vector{Int64},
-    model::ABM,
-    )
-    
-    # jobseeking_weights = map(hh_id -> model[hh_id].skill, labormarket.jobseeking_hh)
+function matching_lm(labormarket::LaborMarket, model::ABM)
 
     # Track employed jobseekers that actually switch jobs
     n_jobswitchers = 0
     n_employed = length(labormarket.employed_hh)
 
+    max_n_candidates = 500
     allowed_excess_L = 100
 
-    Lᵈ = Vector{Int64}(undef, 100)
+    # Lᵈ = Vector{Int64}(undef, 100)
 
     labormarket.L_demanded = length(labormarket.hiring_producers) > 0 ? sum(p_id -> model[p_id].ΔLᵈ, labormarket.hiring_producers) : 0.0
     labormarket.L_hired = 0.0
+    # L_offered = labormarket.L_offered
 
     # update_hiring_firing_producers(labormarket, all_p, model)
-    sort!(labormarket.hiring_producers, by=p_id->model[p_id].ΔLᵈ, rev=true)
+    sort!(labormarket.hiring_producers, by = p_id -> model[p_id].ΔLᵈ, rev=true)
     hiring_producers_dict = Dict(p_id => model[p_id].ΔLᵈ for p_id in labormarket.hiring_producers)
 
     # Loop over hiring producers producers
-    for (p_id, ΔL) in hiring_producers_dict
-        # println(ΔL)
-
-        demanded_labor = ΔL
+    for (p_id, demanded_labor) in hiring_producers_dict
 
         # Stop process if no unemployed left
         if length(labormarket.jobseeking_hh) == 0
             return
-        elseif length(labormarket.jobseeking_hh) < length(Lᵈ)
-            Lᵈ = Vector{Int64}(undef, length(labormarket.jobseeking_hh))
+        # elseif length(labormarket.jobseeking_hh) < length(Lᵈ)
+            # Lᵈ = Vector{Int64}(undef, length(labormarket.jobseeking_hh))
         end
 
         # Make queue of job-seeking households
-        # n_sample = min(30, length(jobseeking_hh))
-        # @timeit to "sample" Lᵈ .= sample(jobseeking_hh, n_sample, replace=false)
-        StatsBase.sample!(labormarket.jobseeking_hh, Lᵈ; replace=false)
-        # sort!(Lᵈ, by = hh_id -> model[hh_id].skill, rev=true)
-        # w = map(hh_id -> model[hh_id].skill, labormarket.jobseeking_hh)
-        # StatsBase.sample!(Lᵈ, Lᵈ, weights(w); replace=false)
+        n_candidates = min(max_n_candidates, length(labormarket.jobseeking_hh))
+        hh_candidates = sample(labormarket.jobseeking_hh, n_candidates; replace=false)
 
         to_be_hired = Int64[]
 
-        for hh_id in Lᵈ
+        for hh_id in hh_candidates
             # Only hire workers if wage can be afforded
             # TODO: DESCRIBE IN MODEL
-            if ((model[hh_id].wʳ / model[hh_id].skill <= model[p_id].wᴼ_max) &&
-                (model[hh_id].L * model[hh_id].skill <= demanded_labor + allowed_excess_L))
+            # println(check_req_wage(hh_id, p_id, model) && check_lab_supply(hh_id, demanded_labor, allowed_excess_L, model) )
+            if check_req_wage(hh_id, p_id, model) && check_lab_supply(hh_id, demanded_labor, allowed_excess_L, model)
                 push!(to_be_hired, hh_id)
                 demanded_labor -= model[hh_id].L * model[hh_id].skill
                 labormarket.L_hired += model[hh_id].L * model[hh_id].skill
+            else
+                continue
             end
 
             # TODO: make this a constant

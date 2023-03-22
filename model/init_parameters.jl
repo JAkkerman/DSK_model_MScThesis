@@ -3,7 +3,7 @@
     # Agent counts
     n_kp::Int64 = 40                      # number of kp
     n_cp::Int64 = 200                     # number of cp
-    n_hh::Int64 = 5_000                    # number of hh
+    n_hh::Int64 = 2500                    # number of hh
 
     # Init rates
     init_unempl_rate::Float64 = 0.05      # initial unemployment rate
@@ -15,8 +15,8 @@
     W₀::Float64 = 200.                    # initial (real) wealth level
     skill_mean::Float64 = 0.              # mean value for lognormal skill distribution
     skill_var::Float64 = 0.75             # variance value for lognormal skill distribution
-    βmin::Float64 = 0.65                  # minimum value discount factor
-    βmax::Float64 = 0.95                  # maximum value discount factor
+    βmin::Float64 = 0.6                  # minimum value discount factor
+    βmax::Float64 = 0.9                  # maximum value discount factor
 
     # Init params of cp
     D₀_cp::Float64 = 2000.                # initial level of demand

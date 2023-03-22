@@ -66,7 +66,8 @@
     # Labor market
     U::Vector{Float64} = zeros(Float64, T)                  # unemployment over time
     switch_rate::Vector{Float64} = zeros(Float64, T)        # rate of switching employers
-    # Exp_UB::Vector{Float64} = zeros(Float64, T)             # total spending on UB
+    L_offered::Vector{Float64} = zeros(Float64, T)          # labor units offered
+    L_demanded::Vector{Float64} = zeros(Float64, T)         # labor units demanded
     dL_avg::Vector{Float64} = zeros(Float64, T)             # average desired labor change
     dL_cp_avg::Vector{Float64} = zeros(Float64, T)          # average desired over time for cp
     dL_kp_avg::Vector{Float64} = zeros(Float64, T)          # average desired over time for kp
@@ -193,7 +194,9 @@ function update_macro_timeseries(
     # Update returns to investments
     model.macroeconomy.returns_investments[t] = indexfund.returns_investments
 
-    # Update average labor demand
+    # Update labor demand
+    model.macroeconomy.L_offered[t] = model.labormarket.L_offered
+    model.macroeconomy.L_demanded[t] = model.labormarket.L_demanded
     model.macroeconomy.dL_avg[t] = mean(p_id -> model[p_id].ΔLᵈ, all_p)
     model.macroeconomy.dL_cp_avg[t] = mean(cp_id -> model[cp_id].ΔLᵈ, all_cp)
     model.macroeconomy.dL_kp_avg[t] = mean(kp_id -> model[kp_id].ΔLᵈ, all_kp)
@@ -322,9 +325,7 @@ end
 """
 Computes the ratios of bankrupt bp, lp and kp.
 """
-function compute_bankrupties!(
-    bankrupt_cp::Vector{Int64},
-    bankrupt_kp::Vector{Int64},
+function compute_bankrupties!(bankrupt_cp::Vector{Int64}, bankrupt_kp::Vector{Int64},
     model::ABM
 )
     model.macroeconomy.bankrupt_cp[model.t] = length(bankrupt_cp) / model.i_param.n_cp
@@ -466,10 +467,7 @@ function compute_unsatisfied_demand(model::ABM)
 end
 
 
-function GINI(
-    x::Vector{Float64},
-    model::ABM
-)
+function GINI(x::Vector{Float64}, model::ABM)
     model.ginidata .= abs.(x .- x')
     return sum(model.ginidata) / (2 * model.i_param.n_hh * sum(abs.(x)))
 end
@@ -479,11 +477,7 @@ end
 GINI approximation function with drastically reduced runtime. Computes using an
     approximation of the surface above and under a Lorenz curve.
 """
-function GINI_approx(
-    x::Vector{Float64},
-    model::ABM
-)
-
+function GINI_approx(x::Vector{Float64}, model::ABM)
     model.perc_of_wealth .= 100 .* cumsum(sort(x) ./ sum(x))
     A = sum(model.equal_div .- model.perc_of_wealth)
     B = sum(model.perc_of_wealth)
@@ -593,7 +587,6 @@ end
 
 function compute_α_W_quantiles(
     all_hh::Vector{Int64},
-    # model.macroeconomy::MacroEconomy, 
     t::Int64,
     model::ABM
 )

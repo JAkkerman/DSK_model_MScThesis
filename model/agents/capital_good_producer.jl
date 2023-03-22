@@ -58,37 +58,22 @@ end
 Initializes kp agent, default is the heterogeneous state, otherwise properties are given
     as optional arguments.
 """
-function initialize_kp(
-    id::Int64, 
-    kp_i::Int64,
-    n_captlgood::Int64,
-    b::Int64;
-    NW=1000,
-    A_LP=1.0,
-    A_EE=1.0,
-    A_EF=1.0,
-    B_LP=1.0,
-    B_EE=1.0,
-    B_EF=1.0,
-    μ=0.2,
-    w̄=1.0,
-    f=1/n_captlgood,
-    )
+function initialize_kp(id::Int64, kp_i::Int64, model::ABM; NW=1000.)
 
     kp = CapitalGoodProducer(
         id = id,                        
         kp_i = kp_i,                               
-        A_LP = A_LP,
-        A_EE = A_EE,
-        A_EF = A_EF,                        
-        B_LP = B_LP,
-        B_EE = B_EE,
-        B_EF = B_EF,
-        debt_installments = zeros(Float64, b+1),                       
-        μ = fill(μ, 3),
-        w̄ = fill(w̄, 3), 
-        wᴼ = w̄,
-        f = fill(f, 3),
+        A_LP = model.i_param.A_LP_0,
+        A_EE = model.i_param.A_EE_0,
+        A_EF = model.i_param.A_EF_0,                        
+        B_LP = model.i_param.B_LP_0,
+        B_EE = model.i_param.B_EE_0,
+        B_EF = model.i_param.B_EF_0,
+        debt_installments = zeros(Float64, model.g_param.b+1),                       
+        μ = fill(model.g_param.μ1, 3),
+        w̄ = fill(model.i_param.w₀, 3), 
+        wᴼ = model.i_param.w₀,
+        f = fill(1/model.i_param.n_kp, 3),
         balance = Balance(NW=NW, EQ=NW)
     )
     return kp
@@ -152,8 +137,6 @@ function choose_technology_kp!(
     ep
     )
 
-    # update_μ_p!(kp, globalparam.ϵ_μ, t)
-
     # Make choice between possible technologies
     if length(tech_choices) > 1
         #   Lamperti et al (2018), eq 1 and 2, augmented for tax rates
@@ -215,10 +198,7 @@ end
 """
 Initializes kp brochure and adds to model properties
 """
-function init_brochure!(
-    kp::CapitalGoodProducer,
-    model::ABM
-)
+function init_brochure!(kp::CapitalGoodProducer, model::ABM)
 
     brochure =  Dict(
                         :price => kp.p[end],
@@ -234,11 +214,7 @@ end
 """
 Updates kp brochure in model properties
 """
-function update_brochure!(
-    kp::CapitalGoodProducer,
-    model::ABM
-)
-
+function update_brochure!(kp::CapitalGoodProducer, model::ABM)
     model.kp_brochures[Symbol(kp.id)][:price] = kp.p[end]
     model.kp_brochures[Symbol(kp.id)][:A_LP] = kp.A_LP
     model.kp_brochures[Symbol(kp.id)][:A_EE] = kp.A_EE
@@ -266,12 +242,7 @@ end
 """
 Lets kp update unit costs
 """
-function compute_c_kp!(
-    kp::CapitalGoodProducer,
-    government::Government,
-    p_ep::Float64
-    )
-
+function compute_c_kp!(kp::CapitalGoodProducer, government::Government,p_ep::Float64)
     c_t = cop(kp.w̄[end], kp.B_LP, government.τᴱ, p_ep, kp.B_EE, government.τᶜ, kp.B_EF)
     if kp.Q[end] > 0
         c_t += kp.RD / kp.Q[end]
@@ -283,10 +254,7 @@ end
 """
 Lets kp set price
 """
-function compute_p_kp!(
-    kp::CapitalGoodProducer, 
-    )
-
+function compute_p_kp!(kp::CapitalGoodProducer)
     shift_and_append!(kp.p, (1 + kp.μ[end]) * kp.c[end])
 end
 
@@ -294,13 +262,8 @@ end
 """
 Lets kp compute the production capacity
 """
-function update_prod_cap_kp!(
-    kp::CapitalGoodProducer,
-    globalparam::GlobalParam
-)
-
-    kp.prod_cap = ceil(Int64, (kp.L * kp.B_LP) / globalparam.freq_per_machine)
-    # println(kp.L, " ", kp.prod_cap)
+function update_prod_cap_kp!(kp::CapitalGoodProducer, globalparam::GlobalParam)
+    kp.prod_cap = floor(Int64, (kp.L * kp.B_LP) / globalparam.freq_per_machine)
 end
 
 
@@ -308,11 +271,7 @@ end
 Determines the level of R&D, and how it is divided under innovation (IN) 
 and immitation (IM). based on Dosi et al (2010)
 """
-function set_RD_kp!(
-    kp::CapitalGoodProducer, 
-    ξ::Float64, 
-    ν::Float64
-    )
+function set_RD_kp!(kp::CapitalGoodProducer, ξ::Float64, ν::Float64)
 
     # Determine total R&D spending at time t, 
     if kp.age > 1
@@ -335,10 +294,8 @@ function set_RD_kp!(
 end
 
 
-function hascapacity(
-    kp::CapitalGoodProducer
-    )
-
+function has_capacity(kp::CapitalGoodProducer)
+    # return true
     return sum(values(kp.orders)) <= kp.Q[end] + 1000
 end
 

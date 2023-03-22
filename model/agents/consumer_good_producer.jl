@@ -252,7 +252,7 @@ function plan_investment_cp!(
     check_funding_restrictions_cp!(cp, government, globalparam, ep.p_ep[t])
 
     # Send orders to kp
-    order_machines_cp!(cp, globalparam.freq_per_machine, model)
+    order_machines_cp!(cp, model)
 end
 
 
@@ -409,7 +409,9 @@ function rank_producers_cp!(
 
 
     # Sort kp ids based on cop
-    cp.kp_ids .= sample(cp.kp_ids, Weights(1 ./ all_cop), length(cp.kp_ids); replace=false)
+    # cp.kp_ids .= sample(cp.kp_ids, Weights(1 ./ all_cop), length(cp.kp_ids); replace=false)
+    order = sortperm(all_cop)
+    cp.kp_ids .= cp.kp_ids[order]
 end
 
     # Choose kp based on brochures
@@ -602,17 +604,16 @@ end
 
 Lets cp order machines from kp of choice.
 """
-function order_machines_cp!(
-    cp::ConsumerGoodProducer,
-    freq_per_machine::Int64,
-    model::ABM
-    )
+function order_machines_cp!(cp::ConsumerGoodProducer, model::ABM)
 
     total_n_machines = cp.n_mach_ordered_EI + cp.n_mach_ordered_RS
 
-    # Send orders for machines to kp
-    if total_n_machines > 0 && hascapacity(model[cp.kp_ids[1]])
-        receive_order_kp!(model[cp.kp_ids[1]], cp.id, total_n_machines, freq_per_machine)
+    # Send orders to first kp that has capacity
+    for kp_id in cp.kp_ids
+        if total_n_machines > 0 && has_capacity(model[kp_id])
+            receive_order_kp!(model[kp_id], cp.id, total_n_machines, model.g_param.freq_per_machine)
+            break
+        end
     end
 end
 
@@ -896,11 +897,7 @@ end
 """
 Updates desired inventory to be a share of the previous demand
 """
-function update_Nᵈ_cp!(
-    cp::ConsumerGoodProducer,
-    ι::Float64
-    )
-
+function update_Nᵈ_cp!(cp::ConsumerGoodProducer, ι::Float64)
     if cp.age > 1
         cp.Nᵈ = ι * cp.D[end]
     end
@@ -910,10 +907,7 @@ end
 """
 Updates maximum offered wage wᴼ_max
 """
-function update_wᴼ_max_cp!(
-    cp::ConsumerGoodProducer
-    )
-    
+function update_wᴼ_max_cp!(cp::ConsumerGoodProducer)
     cp.wᴼ_max = cp.π_LP * cp.p[end]
 end
 
@@ -959,11 +953,7 @@ function checkupdateprice(
 end
 
 
-function add_kp_cp!(
-    cp::ConsumerGoodProducer, 
-    kp_id::Int64
-)
-
+function add_kp_cp!(cp::ConsumerGoodProducer, kp_id::Int64)
     if kp_id ∉ cp.kp_ids
         push!(cp.kp_ids, kp_id)
     end

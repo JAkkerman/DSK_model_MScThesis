@@ -69,3 +69,5 @@ data
 parameters/sensitivity/sensitivity_runs/input_data/*
 parameters/sensitivity/sensitivity_runs/output_data/*
 parameters/sensitivity/sensitivity_runs/test.jl
+
+.DS_store

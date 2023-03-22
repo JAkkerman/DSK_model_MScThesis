@@ -199,14 +199,15 @@ function initialize_model(
         kp = initialize_kp(
                 nextid(model), 
                 kp_i, 
-                model.i_param.n_kp,
-                model.g_param.b; 
-                A_LP = model.i_param.A_LP_0,
-                A_EE = model.i_param.A_EE_0,
-                A_EF = model.i_param.A_EF_0, 
-                B_LP = model.i_param.B_LP_0,
-                B_EE = model.i_param.B_EE_0,
-                B_EF = model.i_param.B_EF_0
+                model
+                # model.i_param.n_kp,
+                # model.g_param.b; 
+                # A_LP = model.i_param.A_LP_0,
+                # A_EE = model.i_param.A_EE_0,
+                # A_EF = model.i_param.A_EF_0, 
+                # B_LP = model.i_param.B_LP_0,
+                # B_EE = model.i_param.B_EE_0,
+                # B_EF = model.i_param.B_EF_0
              )
         add_agent!(kp, model)
 

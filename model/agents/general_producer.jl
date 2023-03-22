@@ -18,6 +18,10 @@ function cop(
 end
 
 
+check_req_wage(hh_id, p_id, model) = model[hh_id].wʳ / model[hh_id].skill <= model[p_id].wᴼ_max
+check_lab_supply(hh_id, demanded_labor, allowed_excess_L, model) = model[hh_id].L * model[hh_id].skill <= demanded_labor + allowed_excess_L
+
+
 """
 Lets producers select employees to fire.
 """

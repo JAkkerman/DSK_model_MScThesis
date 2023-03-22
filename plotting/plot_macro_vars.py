@@ -26,11 +26,10 @@ def plot_macro_vars(df, warmup=0):
     ax[0,1].set_title("Spending indices")
     ax[0,1].legend()
 
-    # Unemployment rate
-    ax[1,1].plot(T, df.U, label='unemployment rate')
-    ax[1,1].plot(T, df.switch_rate, label='switching rate')
-    ax[1,1].set_title("Unemployment rate")
-    ax[1,1].set_ylim(0,1)
+        # Inflation
+    ax[1,1].plot(T, df.CPI_cp, label='cp')
+    ax[1,1].plot(T, df.CPI_kp, label='kp')
+    ax[1,1].set_title('CPI')
     ax[1,1].legend()
 
     # Money Supply 
@@ -59,16 +58,22 @@ def plot_macro_vars(df, warmup=0):
     ax[2,0].set_title('Aggregate C and I')
     ax[2,0].legend()
 
-    # ax[2,1].plot(T, df.GDP_growth, label='GDP')
+    # GDP growth rates
     ax[2,1].hist(df.GDP_growth[300:], bins=50)
     ax[2,1].set_title('growth rates')
-    # ax[2,1].legend()
 
-    # Inflation
-    ax[3,0].plot(T, df.CPI_cp, label='cp')
-    ax[3,0].plot(T, df.CPI_kp, label='kp')
-    ax[3,0].set_title('CPI')
+    # Unemployment rate
+    ax[3,0].plot(T, df.U, label='unemployment rate')
+    ax[3,0].plot(T, df.switch_rate, label='switching rate')
+    ax[3,0].set_title("Unemployment rate")
+    ax[3,0].set_ylim(0,1)
     ax[3,0].legend()
+
+    ax[3,1].axhline(0., linestyle='dashed', color='red')
+    ax[3,1].plot(T, df.L_demanded, label='demanded')
+    ax[3,1].plot(T, df.L_offered, label='offered')
+    ax[3,1].set_title('Labor offered and demanded')
+    ax[3,1].legend()
 
     plt.tight_layout()
     plt.savefig('plots/macro_ts.png', bbox_inches='tight')
