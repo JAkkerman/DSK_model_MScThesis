@@ -1,6 +1,6 @@
 Base.@kwdef mutable struct IndexFund
-    T::Int=T 
-    Assets::Float64 = 0.0                           # Total amount of assets alocated in the fund
+    # T::Int=T 
+    assets::Float64 = 0.                            # Total amount of assets alocated in the fund
     funds_inv::Vector{Float64} = zeros(Float64, T)  # Amount of funds used for investment in last period
     returns_investments::Float64 = 0.               # Return rates of investments over last period
 end
@@ -9,9 +9,11 @@ end
 """
 Initializes index fund struct
 """
-function initialize_indexfund()::IndexFund
+function initialize_indexfund(T)::IndexFund
 
-    indexfund = IndexFund()
+    indexfund = IndexFund(
+        funds_inv = zeros(Float64, T)
+    )
     
     return indexfund
 end
@@ -21,7 +23,7 @@ end
 Takes dividends from producers
 """
 function receive_dividends_if!(indexfund::IndexFund, dividends::Float64)
-    indexfund.Assets += dividends
+    indexfund.assets += dividends
 end
 
 
@@ -34,9 +36,9 @@ function decide_investments_if!(
     t::Int
     )::Float64
 
-    frac_NW_if = indexfund.Assets > 0 ? min(indexfund.Assets / all_req_NW, 1.0) : 0.0
+    frac_NW_if = indexfund.assets > 0 ? min(indexfund.assets / all_req_NW, 1.0) : 0.0
     indexfund.funds_inv[t] = all_req_NW * frac_NW_if
-    indexfund.Assets -= indexfund.funds_inv[t]
+    indexfund.assets -= indexfund.funds_inv[t]
     return frac_NW_if
 end
 
@@ -45,7 +47,7 @@ end
 Deducts funds for net debts lost
 """
 function deduct_unpaid_net_debts_if!(indexfund::IndexFund, total_unpaid_net_debt::Float64)
-    indexfund.Assets -= total_unpaid_net_debt
+    indexfund.assets -= total_unpaid_net_debt
 end
 
 
@@ -67,7 +69,7 @@ function distribute_dividends_if!(
     total_W = sum(all_W)
 
     # Compute return rates:
-    total_dividends = (1 - τᴷ) * indexfund.Assets
+    total_dividends = (1 - τᴷ) * indexfund.assets
     indexfund.returns_investments = total_dividends / total_W
 
     for hh_id in model.all_hh
@@ -85,9 +87,9 @@ function distribute_dividends_if!(
     end
 
     # Pay capgains tax, reset assets back to zero
-    total_capgains_tax = τᴷ * indexfund.Assets
+    total_capgains_tax = τᴷ * indexfund.assets
     receive_capgains_tax_gov!(government, total_capgains_tax, model.t)
-    indexfund.Assets = 0.
+    indexfund.assets = 0.
 end
 
 
@@ -95,5 +97,5 @@ end
 Lets government issue bonds on the capital market.
 """
 function issuegovbonds(indexfund::IndexFund, govdeficit::Float64)
-    indexfund.Assets -= govdeficit
+    indexfund.assets -= govdeficit
 end

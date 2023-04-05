@@ -350,7 +350,7 @@ function compute_M!(model::ABM)
     model.macroeconomy.M_gov[model.t] = model.gov.MS
 
     # Money in investment fund
-    model.macroeconomy.M_if[model.t] = model.idxf.Assets
+    model.macroeconomy.M_if[model.t] = model.idxf.assets
 
     # Total amount of money stocks
     model.macroeconomy.M[model.t] = (model.macroeconomy.M_hh[model.t] + model.macroeconomy.M_cp[model.t] + model.macroeconomy.M_kp[model.t] +
