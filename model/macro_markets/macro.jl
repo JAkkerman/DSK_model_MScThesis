@@ -68,6 +68,7 @@
     switch_rate::Vector{Float64} = zeros(Float64, T)        # rate of switching employers
     L_offered::Vector{Float64} = zeros(Float64, T)          # labor units offered
     L_demanded::Vector{Float64} = zeros(Float64, T)         # labor units demanded
+    L_hired::Vector{Float64} = zeros(Float64, T)            # labor units hired
     dL_avg::Vector{Float64} = zeros(Float64, T)             # average desired labor change
     dL_cp_avg::Vector{Float64} = zeros(Float64, T)          # average desired over time for cp
     dL_kp_avg::Vector{Float64} = zeros(Float64, T)          # average desired over time for kp
@@ -197,6 +198,8 @@ function update_macro_timeseries(
     # Update labor demand
     model.macroeconomy.L_offered[t] = model.labormarket.L_offered
     model.macroeconomy.L_demanded[t] = model.labormarket.L_demanded
+    model.macroeconomy.L_hired[t] = model.labormarket.L_hired
+
     model.macroeconomy.dL_avg[t] = mean(p_id -> model[p_id].ΔLᵈ, all_p)
     model.macroeconomy.dL_cp_avg[t] = mean(cp_id -> model[cp_id].ΔLᵈ, all_cp)
     model.macroeconomy.dL_kp_avg[t] = mean(kp_id -> model[kp_id].ΔLᵈ, all_kp)

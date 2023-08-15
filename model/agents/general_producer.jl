@@ -4,17 +4,13 @@ abstract type Producer <: AbstractAgent end
 
 
 
-function cop(
-    w::Float64,
-    π_LP::Float64,
-    τᴱ::Float64,
-    pₑ::Float64,
-    π_EE::Float64,
-    τᶜ::Float64,
-    π_EF::Float64
-    )
-
+function cop(w::Float64, π_LP::Float64, τᴱ::Float64, pₑ::Float64,
+             π_EE::Float64, τᶜ::Float64, π_EF::Float64)
     return w / π_LP + (τᴱ + pₑ) / π_EE + τᶜ * π_EF
+end
+
+function cop(w::Float64, τᴱ::Float64, pₑ::Float64, τᶜ, brochure::Brochure)
+    return cop(w, brochure.A_LP, τᴱ, pₑ, brochure.A_EE, τᶜ, brochure.A_EF)
 end
 
 

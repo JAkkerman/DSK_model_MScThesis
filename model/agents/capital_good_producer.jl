@@ -58,17 +58,28 @@ end
 Initializes kp agent, default is the heterogeneous state, otherwise properties are given
     as optional arguments.
 """
-function initialize_kp(id::Int64, kp_i::Int64, model::ABM; NW=1000.)
+function initialize_kp(
+    id::Int64, 
+    kp_i::Int64, 
+    model::ABM; 
+    NW=1000.,
+    A_LP = model.i_param.A_LP_0,
+    A_EE = model.i_param.A_EE_0,
+    A_EF = model.i_param.A_EF_0,                        
+    B_LP = model.i_param.B_LP_0,
+    B_EE = model.i_param.B_EE_0,
+    B_EF = model.i_param.B_EF_0
+)
 
     kp = CapitalGoodProducer(
         id = id,                        
         kp_i = kp_i,                               
-        A_LP = model.i_param.A_LP_0,
-        A_EE = model.i_param.A_EE_0,
-        A_EF = model.i_param.A_EF_0,                        
-        B_LP = model.i_param.B_LP_0,
-        B_EE = model.i_param.B_EE_0,
-        B_EF = model.i_param.B_EF_0,
+        A_LP = A_LP,
+        A_EE = A_EE,
+        A_EF = A_EF,                        
+        B_LP = B_LP,
+        B_EE = B_EE,
+        B_EF = B_EF,
         debt_installments = zeros(Float64, model.g_param.b+1),                       
         μ = fill(model.g_param.μ1, 3),
         w̄ = fill(model.i_param.w₀, 3), 
@@ -200,14 +211,22 @@ Initializes kp brochure and adds to model properties
 """
 function init_brochure!(kp::CapitalGoodProducer, model::ABM)
 
-    brochure =  Dict(
-                        :price => kp.p[end],
-                        :A_LP => kp.A_LP,
-                        :A_EE => kp.A_EE,
-                        :A_EF => kp.A_EF
-                    )
+    # brochure =  Dict(
+    #                     :price => kp.p[end],
+    #                     :A_LP => kp.A_LP,
+    #                     :A_EE => kp.A_EE,
+    #                     :A_EF => kp.A_EF
+    #                 )
+    brochure = Brochure(
+        kp.p[end],
+        kp.A_LP,
+        kp.A_EE,
+        kp.A_EF
+    )
 
-    model.kp_brochures[Symbol(kp.id)] = brochure
+    # model.kp_brochures[Symbol(kp.id)] = brochure
+    # insert!(model.kp_brochures, Symbol(kp.id), brochure)
+    model.kp_brochures[kp.kp_i] = brochure
 end
 
 
@@ -215,10 +234,14 @@ end
 Updates kp brochure in model properties
 """
 function update_brochure!(kp::CapitalGoodProducer, model::ABM)
-    model.kp_brochures[Symbol(kp.id)][:price] = kp.p[end]
-    model.kp_brochures[Symbol(kp.id)][:A_LP] = kp.A_LP
-    model.kp_brochures[Symbol(kp.id)][:A_EE] = kp.A_EE
-    model.kp_brochures[Symbol(kp.id)][:A_EF] = kp.A_EF
+    # model.kp_brochures[Symbol(kp.id)].price = kp.p[end]
+    # model.kp_brochures[Symbol(kp.id)].A_LP = kp.A_LP
+    # model.kp_brochures[Symbol(kp.id)].A_EE = kp.A_EE
+    # model.kp_brochures[Symbol(kp.id)].A_EF = kp.A_EF
+    model.kp_brochures[kp.kp_i].price = kp.p[end]
+    model.kp_brochures[kp.kp_i].A_LP = kp.A_LP
+    model.kp_brochures[kp.kp_i].A_EE = kp.A_EE
+    model.kp_brochures[kp.kp_i].A_EF = kp.A_EF
 end
 
 
@@ -394,8 +417,8 @@ function update_Lᵈ!(
     )
 
     # kp.Lᵈ = λ * kp.L + (1 - λ) * (kp.Oᵉ / kp.B_LP + kp.RD / kp.w̄[end])
-    kp.Lᵈ = λ * kp.L + (1 - λ) * (kp.O / kp.B_LP + kp.RD / kp.w̄[end])
-    # kp.Lᵈ = kp.Oᵉ / kp.B_LP + kp.RD / kp.w̄[end]
+    # kp.Lᵈ = λ * kp.L + (1 - λ) * (kp.O / kp.B_LP + kp.RD / kp.w̄[end])
+    kp.Lᵈ = kp.O / kp.B_LP + kp.RD / kp.w̄[end]
     kp.ΔLᵈ = max(kp.Lᵈ - kp.L, -kp.L)
 end
 
@@ -556,10 +579,7 @@ end
 """
 Lets kp update maximum offered wage
 """
-function update_wᴼ_max_kp!(
-    kp::CapitalGoodProducer
-    )
-    
+function update_wᴼ_max_kp!(kp::CapitalGoodProducer)
     kp.wᴼ_max = kp.B_LP * kp.p[end] 
 end
 
@@ -680,18 +700,14 @@ function replace_bankrupt_kp!(
         new_kp = initialize_kp(
             kp_id, 
             kp_i, 
-            length(all_kp),
-            globalparam.b;
+            model;
             NW = NW_stock,
             A_LP = new_A_LP,
             A_EE = new_A_EE,
             A_EF = new_A_EF,
             B_LP = new_B_LP,
             B_EE = new_B_EE,
-            B_EF = new_B_EF,
-            μ = macro_struct.markup_kp[t],
-            w̄ = macro_struct.w_avg[t],
-            f = 0.0
+            B_EF = new_B_EF
         )
 
         # Reset brochure

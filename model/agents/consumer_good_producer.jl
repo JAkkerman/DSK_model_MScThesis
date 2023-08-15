@@ -392,33 +392,21 @@ function rank_producers_cp!(
     all_cop = zeros(Float64, length(cp.kp_ids))
     for (i, kp_id) in enumerate(cp.kp_ids)
 
-        brochure = get(model.kp_brochures, Symbol(kp_id), nothing)
+        brochure = model.kp_brochures[convert_global_id(kp_id, model)]
 
-        p_mach = get(brochure, :price, nothing)
-
-        all_cop[i] = p_mach + b * cop(
-                                cp.w̄[end], 
-                                get(brochure, :A_LP, nothing), 
-                                government.τᴱ, 
-                                ep.p_ep[t], 
-                                get(brochure, :A_EE, nothing), 
-                                government.τᶜ, 
-                                get(brochure, :A_EF, nothing)
-                            )
+        all_cop[i] = brochure.price + b * cop(
+            cp.w̄[end], 
+            government.τᴱ, 
+            ep.p_ep[t], 
+            government.τᶜ, 
+            brochure
+        )
     end
 
-
     # Sort kp ids based on cop
-    # cp.kp_ids .= sample(cp.kp_ids, Weights(1 ./ all_cop), length(cp.kp_ids); replace=false)
-    order = sortperm(all_cop)
-    cp.kp_ids .= cp.kp_ids[order]
+    cp.kp_ids .= cp.kp_ids[sortperm(all_cop)]
 end
 
-    # Choose kp based on brochures
-    # all_cop .= (1 ./ all_cop .^ 2)
-    # brochure = sample(cp.brochures, Weights(all_cop))
-    # cp.kp_ranking[1] = brochure[:kp_id]
-    # cp.kp_ranking = 
 
 """
 Sort machines by cost of production
@@ -445,17 +433,25 @@ function plan_replacement_cp!(
     n_machines_too_many = cp.n_machines > cp.Qᵉ ? cp.n_machines - cp.Qᵉ : 0
 
     # Get price and cost of production of chosen kp
-    brochure = get(model.kp_brochures, Symbol(cp.kp_ids[1]), nothing)
-    p_star = brochure[:price]
+    # brochure = get(model.kp_brochures, Symbol(cp.kp_ids[1]), nothing)
+    brochure = model.kp_brochures[convert_global_id(cp.kp_ids[1], model)]
+    p_star = brochure.price
+    # c_star = cop(
+    #                 cp.w̄[end], 
+    #                 get(brochure, :A_LP, nothing), 
+    #                 government.τᴱ, 
+    #                 ep.p_ep[t], 
+    #                 get(brochure, :A_EE, nothing), 
+    #                 government.τᶜ, 
+    #                 get(brochure, :A_EF, nothing)
+    #              )
     c_star = cop(
                     cp.w̄[end], 
-                    get(brochure, :A_LP, nothing), 
                     government.τᴱ, 
                     ep.p_ep[t], 
-                    get(brochure, :A_EE, nothing), 
                     government.τᶜ, 
-                    get(brochure, :A_EF, nothing)
-                 )
+                    brochure
+                )
 
     # Loop over machine stock, select which machines to replace
     for machine in cp.Ξ
@@ -523,12 +519,13 @@ function plan_expansion_cp!(cp::ConsumerGoodProducer, globalparam::GlobalParam, 
     #     return
     # end
 
-    brochure = get(model.kp_brochures, Symbol(cp.kp_ids[1]), nothing)
-    if cp.possible_I < brochure[:price]
+    # brochure = get(model.kp_brochures, Symbol(cp.kp_ids[1]), nothing)
+    brochure = model.kp_brochures[convert_global_id(cp.kp_ids[1], model)]
+    if cp.possible_I < brochure.price
         cp.n_mach_desired_EI = 0
     end
 
-    max_mach_poss = floor(Int64, cp.possible_I / brochure[:price])
+    max_mach_poss = floor(Int64, cp.possible_I / brochure.price)
 
     # if cp.Qᵉ > cp.n_machines && cp.cu > 0.8
     if cp.Qᵉ > cp.n_machines
@@ -792,16 +789,10 @@ end
 """
 Updates expected long-term production Qᵉ
 """
-function update_Qᵉ_cp!(
-    cp::ConsumerGoodProducer,
-    ω::Float64,
-    ι::Float64
-    )
+function update_Qᵉ_cp!(cp::ConsumerGoodProducer, ω::Float64, ι::Float64)
     if length(cp.Ξ) > 0
         cp.Qᵉ = ω * cp.Qᵉ + (1 - ω) * ((1 + ι) * cp.Dᵉ)
     end
-
-    # cp.Qᵉ = max(cp.Dᵉ + cp.Nᵈ - cp.N_goods, 0.0)
 end
 
 

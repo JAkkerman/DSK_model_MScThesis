@@ -56,21 +56,6 @@ function initialize_hh(model::ABM)::Household
     return hh
 end
 
-# """
-# Uniformly samples cp to be in trading network.
-# """
-# function select_cp_hh!(
-#     hh::Household,
-#     all_cp::Vector{Int64},
-#     n_cp_hh::Int64
-#     )
-
-#     hh.cp = sample(all_cp, n_cp_hh)
-#     for cp_id in hh.cp
-#         hh.unsat_dem[cp_id] = 0.0
-#     end
-# end
-
 
 """
 Sets consumption budget based on current wealth level

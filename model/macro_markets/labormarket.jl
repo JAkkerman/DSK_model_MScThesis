@@ -202,11 +202,8 @@ function matching_lm(labormarket::LaborMarket, model::ABM)
     max_n_candidates = 500
     allowed_excess_L = 100
 
-    # Lᵈ = Vector{Int64}(undef, 100)
-
     labormarket.L_demanded = length(labormarket.hiring_producers) > 0 ? sum(p_id -> model[p_id].ΔLᵈ, labormarket.hiring_producers) : 0.0
     labormarket.L_hired = 0.0
-    # L_offered = labormarket.L_offered
 
     # update_hiring_firing_producers(labormarket, all_p, model)
     sort!(labormarket.hiring_producers, by = p_id -> model[p_id].ΔLᵈ, rev=true)
@@ -218,8 +215,6 @@ function matching_lm(labormarket::LaborMarket, model::ABM)
         # Stop process if no unemployed left
         if length(labormarket.jobseeking_hh) == 0
             return
-        # elseif length(labormarket.jobseeking_hh) < length(Lᵈ)
-            # Lᵈ = Vector{Int64}(undef, length(labormarket.jobseeking_hh))
         end
 
         # Make queue of job-seeking households
@@ -231,7 +226,6 @@ function matching_lm(labormarket::LaborMarket, model::ABM)
         for hh_id in hh_candidates
             # Only hire workers if wage can be afforded
             # TODO: DESCRIBE IN MODEL
-            # println(check_req_wage(hh_id, p_id, model) && check_lab_supply(hh_id, demanded_labor, allowed_excess_L, model) )
             if check_req_wage(hh_id, p_id, model) && check_lab_supply(hh_id, demanded_labor, allowed_excess_L, model)
                 push!(to_be_hired, hh_id)
                 demanded_labor -= model[hh_id].L * model[hh_id].skill

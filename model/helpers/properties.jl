@@ -47,7 +47,7 @@ mutable struct Properties
 
     macroeconomy::MacroEconomy
     labormarket::LaborMarket
-    kp_brochures::Dict{Symbol, Dict{Symbol, Float64}}
+    kp_brochures::Array{Brochure}
     cmdata::CMData
     perc_of_wealth::Vector{Float64}
     equal_div::Vector{Float64}

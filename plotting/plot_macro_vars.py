@@ -72,6 +72,7 @@ def plot_macro_vars(df, warmup=0):
     ax[3,1].axhline(0., linestyle='dashed', color='red')
     ax[3,1].plot(T, df.L_demanded, label='demanded')
     ax[3,1].plot(T, df.L_offered, label='offered')
+    ax[3,1].plot(T, df.L_hired, label='hired')
     ax[3,1].set_title('Labor offered and demanded')
     ax[3,1].legend()
 

@@ -15,3 +15,17 @@ function shift_and_append!(
     # Add new value
     ts[end] = newval
 end
+
+
+"""
+Converts global agent id to local id only for agent type. 
+    Order of initialization: hh, cp, kp
+"""
+function convert_global_id(global_id::Int, model::ABM, is_hh::Bool=false, is_cp::Bool=false)
+    if is_hh
+        return global_id
+    elseif is_cp
+        return global_id - model.i_param.n_hh
+    end
+    return global_id - model.i_param.n_hh - model.i_param.n_cp
+end

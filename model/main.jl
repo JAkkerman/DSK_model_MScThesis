@@ -6,6 +6,7 @@ using Agents
 using BenchmarkTools
 using TimerOutputs
 using DataStructures
+using Dictionaries
 using Parameters
 using SparseArrays
 using Dates
@@ -25,6 +26,7 @@ include("init_parameters.jl")
 include("objects/machine.jl")
 include("objects/powerplant.jl")
 include("objects/climate.jl")
+include("objects/brochure.jl")
 
 include("agents/government.jl")
 include("agents/indexfund.jl")
@@ -84,7 +86,7 @@ function initialize_model(
     government = initgovernment(T, t_warmup, changed_taxrates)
 
     # Initialize index fund struct
-    indexfund = IndexFund(T=T)
+    indexfund = initialize_indexfund(T)
 
     # Initialize energy producer
     ep = initialize_energy_producer(T, initparam, government.τᶜ, globalparam)
@@ -100,7 +102,7 @@ function initialize_model(
     )
 
     # Make empty dict for kp_brochures
-    kp_brochures = Dict()
+    kp_brochures = Array{Brochure}(undef, initparam.n_kp)
 
     # Determine ids for all agents
     all_hh = collect(1:initparam.n_hh)
@@ -761,7 +763,7 @@ function run_simulation(;
         T;
         adata = adata,
         mdata = mdata, 
-        showprogress = showprogress
+        # showprogress = showprogress
     )
 
     # Get macro variables from macroeconomy struct
