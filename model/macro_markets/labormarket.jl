@@ -205,12 +205,12 @@ function matching_lm(labormarket::LaborMarket, model::ABM)
     labormarket.L_demanded = length(labormarket.hiring_producers) > 0 ? sum(p_id -> model[p_id].ΔLᵈ, labormarket.hiring_producers) : 0.0
     labormarket.L_hired = 0.0
 
-    # update_hiring_firing_producers(labormarket, all_p, model)
+    # Sort hiring producers by labor demand
     sort!(labormarket.hiring_producers, by = p_id -> model[p_id].ΔLᵈ, rev=true)
-    hiring_producers_dict = Dict(p_id => model[p_id].ΔLᵈ for p_id in labormarket.hiring_producers)
+    hiring_producers_labdem = map(p_id -> model[p_id].ΔLᵈ, labormarket.hiring_producers)
 
     # Loop over hiring producers producers
-    for (p_id, demanded_labor) in hiring_producers_dict
+    for (i, (p_id, demanded_labor)) in enumerate(zip(labormarket.hiring_producers, hiring_producers_labdem))
 
         # Stop process if no unemployed left
         if length(labormarket.jobseeking_hh) == 0
@@ -218,7 +218,10 @@ function matching_lm(labormarket::LaborMarket, model::ABM)
         end
 
         # Make queue of job-seeking households
-        n_candidates = min(max_n_candidates, length(labormarket.jobseeking_hh))
+        n_curr_employees = length(model[p_id].employees)
+
+        # TODO: MAKE THIS A PARAMETER
+        n_candidates = min(n_curr_employees > 10 ? round(Int, 0.2 * n_curr_employees) : 10, length(labormarket.jobseeking_hh))
         hh_candidates = sample(labormarket.jobseeking_hh, n_candidates; replace=false)
 
         to_be_hired = Int64[]
@@ -270,7 +273,8 @@ function matching_lm(labormarket::LaborMarket, model::ABM)
             update_w̄_p!(model[p_id], model)
             update_hiredworkers_lm!(labormarket, unemployed_to_employed)
 
-            hiring_producers_dict[p_id] = demanded_labor
+            # hiring_producers_dict[p_id] = demanded_labor
+            hiring_producers_labdem[i] = demanded_labor
         end
     end
 
@@ -279,10 +283,7 @@ function matching_lm(labormarket::LaborMarket, model::ABM)
 end
 
 
-function update_hiredworkers_lm!(
-    labormarket::LaborMarket, 
-    to_be_hired::Vector{Int64}
-    )
+function update_hiredworkers_lm!(labormarket::LaborMarket, to_be_hired::Vector{Int64})
 
     # Add newly employed workers to employed category
     append!(labormarket.employed_hh, to_be_hired)
@@ -292,10 +293,7 @@ function update_hiredworkers_lm!(
 end
 
 
-function update_firedworker_lm!(
-    labormarket::LaborMarket,
-    to_be_fired::Vector{Int64}
-    )
+function update_firedworker_lm!(labormarket::LaborMarket, to_be_fired::Vector{Int64})
 
     # Add newly unemployed workers to unemployed category
     append!(labormarket.unemployed_hh, to_be_fired)
@@ -308,11 +306,7 @@ end
 """
 Finds employed workers that want to look for another job.
 """
-function find_employed_jobseekers_lm(
-    employed_hh::Vector{Int64},
-    ψ_E::Float64
-    )::Vector{Int64}
-
+function find_employed_jobseekers_lm(employed_hh::Vector{Int64}, ψ_E::Float64)::Vector{Int64}
     n = floor(Int64, length(employed_hh) * ψ_E)
     employed_jobseekers = sample(employed_hh, n)
     return employed_jobseekers
