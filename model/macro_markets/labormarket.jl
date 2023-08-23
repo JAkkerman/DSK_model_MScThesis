@@ -110,7 +110,7 @@ function labormarket_process!(
                                           model.labormarket.jobseeking_hh)
 
     # Labor market matching process
-    @timeit to "matching" matching_lm(labormarket, model)
+    @timeit to "matching" labormarket_matching(labormarket, model)
 
     # Update the unemployment rate
     update_unemploymentrate_lm!(labormarket)
@@ -153,10 +153,7 @@ end
 """
 Updates the unemployment rate in the economy
 """
-function update_unemploymentrate_lm!(
-    labormarket::LaborMarket
-    )
-
+function update_unemploymentrate_lm!(labormarket::LaborMarket)
     labormarket.E = (length(labormarket.unemployed_hh) / (length(labormarket.employed_hh) + length(labormarket.unemployed_hh)))
 end
 
@@ -165,10 +162,7 @@ end
 Employers select workers to fire, labor market aggregates are changed and employees 
 are fired.
 """
-function fire_workers_lm!(
-    labormarket::LaborMarket, 
-    model::ABM
-    )
+function fire_workers_lm!(labormarket::LaborMarket, model::ABM)
 
     all_fired_workers = Int64[]
 
@@ -193,13 +187,12 @@ end
 """
 Matches job-seeking households with employee-seeking firms
 """
-function matching_lm(labormarket::LaborMarket, model::ABM)
+function labormarket_matching(labormarket::LaborMarket, model::ABM)
 
     # Track employed jobseekers that actually switch jobs
     n_jobswitchers = 0
     n_employed = length(labormarket.employed_hh)
 
-    max_n_candidates = 500
     allowed_excess_L = 100
 
     labormarket.L_demanded = length(labormarket.hiring_producers) > 0 ? sum(p_id -> model[p_id].ΔLᵈ, labormarket.hiring_producers) : 0.0
@@ -221,12 +214,22 @@ function matching_lm(labormarket::LaborMarket, model::ABM)
         n_curr_employees = length(model[p_id].employees)
 
         # TODO: MAKE THIS A PARAMETER
-        n_candidates = min(n_curr_employees > 10 ? round(Int, 0.2 * n_curr_employees) : 10, length(labormarket.jobseeking_hh))
-        hh_candidates = sample(labormarket.jobseeking_hh, n_candidates; replace=false)
+        n_jobseeking_hh = length(labormarket.jobseeking_hh)
+        n_candidates = min(max(10, n_curr_employees), n_jobseeking_hh)
+        # hh_candidates = sample(labormarket.jobseeking_hh, n_candidates; replace=false)
 
         to_be_hired = Int64[]
 
-        for hh_id in hh_candidates
+        # for hh_id in hh_candidates
+        for _ in 1:n_candidates
+
+            hh_id = sample(labormarket.jobseeking_hh)
+
+            # Check if employee not hired yet in previous iteration
+            if hh_id ∈ model[p_id].employees
+                continue
+            end
+
             # Only hire workers if wage can be afforded
             # TODO: DESCRIBE IN MODEL
             if check_req_wage(hh_id, p_id, model) && check_lab_supply(hh_id, demanded_labor, allowed_excess_L, model)

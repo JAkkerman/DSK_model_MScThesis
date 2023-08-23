@@ -38,11 +38,7 @@
 end
 
 
-function initgovernment(
-    T::Int64,
-    t_warmup::Int64,
-    changed_taxrates::Union{Vector, Nothing}
-)::Government
+function initialize_government(T::Int64, t_warmup::Int64, changed_taxrates::Union{Vector, Nothing})
 
     government = Government(T=T)
 
@@ -117,10 +113,7 @@ end
 # end
 
 
-function update_taxrates!(
-    government::Government,
-    t::Int64
-)
+function update_taxrates!(government::Government, t)
     government.τᴵ = government.τᴵ_ts[t]
     government.τᴷ = government.τᴷ_ts[t]
     government.τˢ = government.τˢ_ts[t]
@@ -206,11 +199,7 @@ end
 """
 Lets government receive sales taxes from consumer good producers
 """
-function receive_salestax_gov!(
-    government::Government,
-    salestax::Float64,
-    t::Int64
-)
+function receive_salestax_gov!(government::Government, salestax, t)
     government.rev_salestax[t] += salestax
 end
 
@@ -218,11 +207,7 @@ end
 """
 Lets government receive energy taxes from producers
 """
-function receive_energytax_gov!(
-    government::Government,
-    energytax::Float64,
-    t::Int64
-)
+function receive_energytax_gov!(government::Government, energytax, t)
     government.rev_energytax[t] += energytax
 end
 
@@ -243,10 +228,7 @@ function receive_profittax!(government::Government, profittax_amount, t)
 end
 
 
-function compute_budget_balance(
-    government::Government,
-    t::Int64
-)
+function compute_budget_balance(government::Government, t::Int64)
 
     rev_capitaltax = t > 1 ? government.rev_capitaltax[t-1] : 0.0
 

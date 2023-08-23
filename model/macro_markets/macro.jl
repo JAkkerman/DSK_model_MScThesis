@@ -1,3 +1,5 @@
+# TODO: only macro variables required for functioning model, others in general data collector
+
 @Base.kwdef mutable struct MacroEconomy
     T::Int=T                                                # number of timesteps
 
@@ -130,9 +132,7 @@ end
 
 
 # TODO: MOVE TO WRITEDATA
-function get_mdata(
-    model::ABM
-)::DataFrame
+function get_mdata(model::ABM)::DataFrame
 
     # If mdata to save is not specified, save all data in macro struct
     macro_categories = fieldnames(typeof(model.macroeconomy))[2:end-1]
@@ -160,10 +160,9 @@ end
 
 
 """
-Updates macro stats after each time step
+Calls update functions required for macro variables used in simulation.
 """
 function update_macro_timeseries(
-    # macroeconomy::MacroEconomy,
     t::Int, 
     all_hh::Vector{Int}, 
     all_cp::Vector{Int}, 
@@ -281,9 +280,7 @@ end
 """
 Computes GDP based on income of separate sectors, computes partial incomes of sectors
 """
-function compute_GDP!(
-    model::ABM
-)
+function compute_GDP!(model::ABM)
 
     # Household income
     total_I = sum(hh_id -> model[hh_id].total_I[end], model.all_hh)
@@ -370,11 +367,7 @@ function update_wage_stats!(model::ABM)
     model.macroeconomy.w_sat_avg[model.t] = mean(hh_id -> model[hh_id].wˢ, model.all_hh)
 end
 
-function update_income_stats!(
-    all_hh::Vector{Int}, 
-    t::Int, 
-    model::ABM
-    )
+function update_income_stats!(all_hh::Vector{Int}, t::Int, model::ABM)
 
     model.macroeconomy.YL_avg[t] = mean(hh_id -> model[hh_id].labor_I, all_hh)
 
@@ -386,9 +379,6 @@ function update_income_stats!(
 
     model.macroeconomy.Y_avg[t] = (model.macroeconomy.YL_avg[t] + model.macroeconomy.YK_avg[t] 
                              + model.macroeconomy.YUB_avg[t] + model.macroeconomy.YSB_avg[t])
-    
-    # all_I = map(hh_id -> model[hh_id].total_I, all_hh)
-    # println(percentile(all_I, 0.1))
 end
 
 
@@ -481,7 +471,7 @@ GINI approximation function with drastically reduced runtime. Computes using an
     approximation of the surface above and under a Lorenz curve.
 """
 function GINI_approx(x::Vector{Float64}, model::ABM)
-    model.perc_of_wealth .= 100 .* cumsum(sort(x) ./ sum(x))
+    model.perc_of_wealth .= (100 * cumsum(sort(x) ./ sum(x)))
     A = sum(model.equal_div .- model.perc_of_wealth)
     B = sum(model.perc_of_wealth)
     G = A / (A + B)

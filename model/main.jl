@@ -32,12 +32,12 @@ include("agents/government.jl")
 include("agents/indexfund.jl")
 include("macro_markets/macro.jl")
 include("agents/household.jl")
-include("agents/general_producer.jl")
+include("agents/producer_general.jl")
 include("objects/accounting_firms.jl")
 include("objects/accounting_govt.jl")
-include("agents/consumer_good_producer.jl")
-include("agents/capital_good_producer.jl")
-include("agents/energy_producer.jl")
+include("agents/producer_consumer_good.jl")
+include("agents/producer_capital_good.jl")
+include("agents/producer_energy.jl")
 
 include("macro_markets/labormarket.jl")
 include("macro_markets/consumermarket.jl")
@@ -83,7 +83,7 @@ function initialize_model(
     labormarket = LaborMarket()
 
     # Initialize government struct
-    government = initgovernment(T, t_warmup, changed_taxrates)
+    government = initialize_government(T, t_warmup, changed_taxrates)
 
     # Initialize index fund struct
     indexfund = initialize_indexfund(T)
@@ -137,7 +137,6 @@ function initialize_model(
                                 labormarket,
                                 kp_brochures,
                                 cmdata,
-                                # zeros(Float64, initparam.n_hh, initparam.n_hh,)
                                 zeros(Float64, initparam.n_hh),
                                 LinRange(0, 100, initparam.n_hh)
                            )
@@ -202,14 +201,6 @@ function initialize_model(
                 nextid(model), 
                 kp_i, 
                 model
-                # model.i_param.n_kp,
-                # model.g_param.b; 
-                # A_LP = model.i_param.A_LP_0,
-                # A_EE = model.i_param.A_EE_0,
-                # A_EF = model.i_param.A_EF_0, 
-                # B_LP = model.i_param.B_LP_0,
-                # B_EE = model.i_param.B_EE_0,
-                # B_EF = model.i_param.B_EF_0
              )
         add_agent!(kp, model)
 

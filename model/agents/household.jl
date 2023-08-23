@@ -149,6 +149,7 @@ function compute_consumption_budget_hh!(
 
             # Compute optimal propensity to consume
             compute_α!(hh, globalparam, ERt, W̃min, W̃med)
+            # hh.α = 1.
 
             # Set consumption budget
             hh.C = hh.α * hh.W
@@ -267,12 +268,7 @@ end
 """
 Updates satisfying wage wˢ and requested wage wʳ
 """
-function update_sat_req_wage_hh!(
-    hh::Household, 
-    ϵ_w::Float64,
-    # ω::Float64, 
-    w_min::Float64
-    )
+function update_sat_req_wage_hh!(hh::Household, ϵ_w::Float64, w_min::Float64)
 
     # Update wˢ using adaptive rule
     # hh.wˢ = ω * hh.wˢ + (1 - ω) * (hh.employed ? hh.w[end] : w_min)

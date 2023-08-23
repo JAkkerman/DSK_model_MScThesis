@@ -1,8 +1,8 @@
 @with_kw struct InitParam
     
     # Agent counts
-    n_kp::Int64 = 40                      # number of kp
-    n_cp::Int64 = 400                     # number of cp
+    n_kp::Int64 = 20                      # number of kp
+    n_cp::Int64 = 200                     # number of cp
     n_hh::Int64 = 5000                    # number of hh
 
     # Init rates

@@ -3,12 +3,18 @@
 abstract type Producer <: AbstractAgent end
 
 
-
+"""
+Computes the cost of production
+"""
 function cop(w::Float64, π_LP::Float64, τᴱ::Float64, pₑ::Float64,
              π_EE::Float64, τᶜ::Float64, π_EF::Float64)
     return w / π_LP + (τᴱ + pₑ) / π_EE + τᶜ * π_EF
 end
 
+
+"""
+Computes the cost of production
+"""
 function cop(w::Float64, τᴱ::Float64, pₑ::Float64, τᶜ, brochure::Brochure)
     return cop(w, brochure.A_LP, τᴱ, pₑ, brochure.A_EE, τᶜ, brochure.A_EF)
 end
@@ -68,6 +74,9 @@ function hire_worker_p!(p::Producer, hh::Household)
 end
 
 
+"""
+Update amount of labor units in firm
+"""
 function update_L!(p::Producer, model::ABM)
     p.L = length(p.employees) > 0 ? sum(hh_id -> model[hh_id].L * model[hh_id].skill, p.employees) : 0.0
 end
@@ -116,7 +125,7 @@ end
 
 
 """
-Updates market shares of cp firms
+Updates market shares of cp firms.
 """
 function update_marketshare_p!(all_p::Vector{Int}, model::ABM)
 
@@ -146,9 +155,6 @@ function borrow_funds_p!(p::Producer, amount::Float64, b::Int64)
     p.curracc.add_debt += amount
     p.balance.debt = sum(p.debt_installments)
 end
-
-
-# function update_debt!()
 
 
 """
@@ -253,11 +259,6 @@ function kill_all_bankrupt_p!(
     model::ABM
     )
 
-    # Remove bankrupt cp ids from households
-    # for hh_id in all_hh
-    #     remove_bankrupt_producers_hh!(model[hh_id], bankrupt_cp)
-    # end
-
     # Remove bankrupt cp ids from kp historical clients
     for kp_id in all_kp
         remove_bankrupt_HC_kp!(model[kp_id], bankrupt_cp)
@@ -325,36 +326,6 @@ end
 """
 Updates the mean skill level of employees.
 """
-function update_mean_skill_p!(
-    # p::Union{ConsumerGoodProducer, CapitalGoodProducer},
-    p::Producer,
-    model::ABM
-    )
-
+function update_mean_skill_p!(p::Producer, model::ABM)
     p.mean_skill = length(p.employees) > 0 ? mean(hh_id -> model[hh_id].skill, p.employees) : 0.0
 end
-
-
-# """
-# Computes the markup rate μ based on the market share f.
-# """
-# function update_μ_p!(
-#     # p::AbstractAgent,
-#     p::Producer,
-#     ϵ_μ::Float64,
-#     t::Int64
-#     )
-
-#     new_μ = p.μ[end]
-#     shock = ϵ_μ * rand()
-
-#     if p.age > 2 && t > 2
-#         dp = p.μ[end] - p.μ[end - 1]
-#         dΠ = p.Π[end] - p.Π[end - 1]
-#         new_μ *= (1 + shock * sign(dp) * sign(dΠ))
-#     else
-#         new_μ *= (1 + shock * sample([-1., 1.]))
-#     end
-
-#     shift_and_append!(p.μ, new_μ)
-# end
