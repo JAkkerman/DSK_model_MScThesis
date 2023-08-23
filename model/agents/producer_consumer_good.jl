@@ -722,7 +722,9 @@ function replace_bankrupt_cp!(
     for (cp_i, cp_id) in enumerate(bankrupt_cp)
 
         # Sample what the size of the capital stock will be
-        D = model.macroeconomy.cu[model.t] * all_n_machines[cp_i] * model.g_param.freq_per_machine
+        # D = model.macroeconomy.cu[model.t] * all_n_machines[cp_i] * model.g_param.freq_per_machine
+        D = 1. * all_n_machines[cp_i] * model.g_param.freq_per_machine
+
 
         # In the first period, the cp has no machines yet, these are delivered at the end
         # of the first period

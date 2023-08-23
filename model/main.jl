@@ -22,7 +22,6 @@ include("helpers/update.jl")
 include("global_parameters.jl")
 include("init_parameters.jl")
 
-
 include("objects/machine.jl")
 include("objects/powerplant.jl")
 include("objects/climate.jl")
@@ -30,7 +29,7 @@ include("objects/brochure.jl")
 
 include("agents/government.jl")
 include("agents/indexfund.jl")
-include("macro_markets/macro.jl")
+include("markets/macro.jl")
 include("agents/household.jl")
 include("agents/producer_general.jl")
 include("objects/accounting_firms.jl")
@@ -39,8 +38,8 @@ include("agents/producer_consumer_good.jl")
 include("agents/producer_capital_good.jl")
 include("agents/producer_energy.jl")
 
-include("macro_markets/labormarket.jl")
-include("macro_markets/consumermarket.jl")
+include("markets/market_labor.jl")
+include("markets/market_consumergoods.jl")
 
 include("helpers/properties.jl")
 include("helpers/modeldata_storage.jl")
@@ -111,7 +110,7 @@ function initialize_model(
     all_p = vcat(all_cp, all_kp)
 
     properties = Properties(
-                                1,
+                                0,
                                 t_warmup,
                                 T,
 
@@ -341,6 +340,9 @@ end
 
 function model_step!(model::ABM)::ABM
 
+    # Increment time by one step
+    model.t += 1
+
     # TODO incorporate this in all the functions
     t = model.t
     t_warmup = model.t_warmup
@@ -364,12 +366,11 @@ function model_step!(model::ABM)::ABM
     @timeit timer "schedule" all_hh, all_cp, all_kp, all_p = schedule_per_type(model)
 
     # Redistribute goverment balance
-    resolve_gov_balance!(government, indexfund, globalparam, all_hh, t, model)
+    resolve_gov_balance!(government, indexfund, globalparam, t, model)
 
     # Update firm age
-    # TODO: put in function
-    for p_id in all_p
-        model[p_id].age += 1
+    for p_id in model.all_p
+        update_age!(model[p_id])
     end
 
     # Check if households still have enough bp and lp, otherwise sample more
@@ -624,21 +625,9 @@ function model_step!(model::ABM)::ABM
 
     # (7) macro-economic indicators are updated.
     @timeit timer "update macro ts" update_macro_timeseries(
-        # macroeconomy,
-        t, 
-        all_hh, 
-        all_cp, 
-        all_kp,
-        all_p,
-        ep,
         bankrupt_cp,
         bankrupt_kp,
-        labormarket,
-        government,
-        indexfund,
-        globalparam,
         model,
-        timer
     )
 
     # Update climate parameters, compute new carbon equilibria and temperature change
@@ -694,9 +683,6 @@ function model_step!(model::ABM)::ABM
         model
     )
 
-    # Increment time by one step
-    model.t += 1
-
     if model.t == model.T
         compute_emission_indices!(climate, t_warmup)
     end
@@ -747,18 +733,19 @@ function run_simulation(;
     adata, mdata = initialize_datacategories(model, savedata)
 
     # Run model
-    @timeit timer "runmodel" agent_df, _ = run!(
+    @timeit timer "runmodel" agent_df, model_df = run!(
         model, 
         dummystep, 
-        model_step!, 
+        model_step!,
         T;
+        when = collect(1:T),
         adata = adata,
-        mdata = mdata, 
+        mdata = aggregate_data
         # showprogress = showprogress
     )
 
     # Get macro variables from macroeconomy struct
-    model_df = get_mdata(model)
+    # model_df = get_mdata(model)
 
     # Save agent dataframe and model dataframe to csv
     if savedata

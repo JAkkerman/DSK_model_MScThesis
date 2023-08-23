@@ -329,3 +329,8 @@ Updates the mean skill level of employees.
 function update_mean_skill_p!(p::Producer, model::ABM)
     p.mean_skill = length(p.employees) > 0 ? mean(hh_id -> model[hh_id].skill, p.employees) : 0.0
 end
+
+
+function update_age!(p::Producer)
+    p.age += 1
+end
