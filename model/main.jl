@@ -354,7 +354,6 @@ function model_step!(model::ABM)::ABM
     labormarket = model.labormarket 
     indexfund = model.idxf 
     climate = model.climate 
-    # cmdata = model.cmdata
 
     # Check if any global params are changed in ofat experiment
     check_changed_ofatparams(globalparam, t)
@@ -374,13 +373,13 @@ function model_step!(model::ABM)::ABM
     end
 
     # Check if households still have enough bp and lp, otherwise sample more
-    @timeit timer "hh refill" for hh_id in all_hh
+    @timeit timer "hh refill" for hh_id in model.all_hh
         # refillsuppliers_hh!(model[hh_id], all_cp, initparam.n_cp_hh, model)
         resetincomes_hh!(model[hh_id])
     end
 
     # Clear current account, decide how many debts to repay, reset kp brochures of all cp
-    @timeit timer "clear account cp" for cp_id in all_cp
+    @timeit timer "clear account cp" for cp_id in model.all_cp
         clear_firm_currentaccount_p!(model[cp_id])
     end
 
@@ -459,7 +458,7 @@ function model_step!(model::ABM)::ABM
 
     # (2) capital good producers set labor demand based on expected ordered machines
     @timeit timer "plan prod kp"  for kp_id in all_kp
-        plan_production_kp!(model[kp_id], globalparam, model)
+        plan_production_kp!(model[kp_id], model)
     end
 
     # (3) labor market matching process
@@ -484,18 +483,13 @@ function model_step!(model::ABM)::ABM
         update_prod_cap_kp!(model[kp_id], globalparam)
     end
 
-    for cp_id in all_cp
+    @timeit timer "budget constr" for cp_id in all_cp
         check_funding_restrictions_cp!(model[cp_id], government, globalparam, ep.p_ep[t])
     end
 
     # (4) Producers pay workers their wage. Government pays unemployment benefits
     @timeit timer "pay workers" for p_id in all_p
-        pay_workers_p!(
-            model[p_id],
-            government,
-            t, 
-            model
-        )
+        pay_workers_p!(model[p_id], model)
     end
     pay_unemployment_benefits_gov!(government, labormarket.unemployed_hh, t, model)
 
@@ -514,7 +508,7 @@ function model_step!(model::ABM)::ABM
     end
 
     # Let energy producer meet energy demand
-    produce_energy_ep!(
+    @timeit timer "produce energy" produce_energy_ep!(
         ep, 
         government, 
         all_cp, 
@@ -535,7 +529,8 @@ function model_step!(model::ABM)::ABM
     # Households set consumption budget
     
     P̄ = mean(cp_id -> model[cp_id].p[end] * model[cp_id].f[end], model.all_cp)
-    for hh_id in all_hh
+        # update_average_price_hh!(model[hh_id], P̄, globalparam.ω, model)
+    for hh_id in model.all_hh
         # Update average price level of cp
         update_average_price_hh!(model[hh_id], P̄, globalparam.ω, model)
     end
@@ -618,7 +613,7 @@ function model_step!(model::ABM)::ABM
 
     # Update market shares of cp and kp
     # update_marketshare_p!(all_cp, model)
-    update_marketshare_p!(all_kp, model)
+    @timeit timer "marketshare" update_marketshare_p!(all_kp, model)
     
     # Select producers that will be declared bankrupt and removed
     @timeit timer "check br" bankrupt_cp, bankrupt_kp, bankrupt_kp_i = check_bankrupty_all_p!(all_p, all_kp, globalparam, model)
@@ -741,7 +736,6 @@ function run_simulation(;
         when = collect(1:T),
         adata = adata,
         mdata = aggregate_data
-        # showprogress = showprogress
     )
 
     # Get macro variables from macroeconomy struct

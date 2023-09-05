@@ -348,20 +348,16 @@ end
 """
 Based on received orders, sets labor demand to fulfill production.
 """
-function plan_production_kp!(
-    kp::CapitalGoodProducer,
-    globalparam::GlobalParam,
-    model::ABM
-    )
+function plan_production_kp!(kp::CapitalGoodProducer, model::ABM)
 
     # Update average wage level
     update_w̄_p!(kp, model)
     
     # Determine total amount of capital units to produce and amount of labor to hire
-    kp.O = sum(values(kp.orders)) * globalparam.freq_per_machine
+    kp.O = sum(values(kp.orders)) * model.g_param.freq_per_machine
 
     # Determine amount of labor to hire
-    update_Lᵈ!(kp, globalparam.λ)
+    update_Lᵈ!(kp, model.g_param.λ)
 
     # Update maximum offered wage
     update_wᴼ_max_kp!(kp)
@@ -396,10 +392,7 @@ end
 """
 Update expected amount of orders
 """
-function update_Oᵉ_kp!(
-    kp::CapitalGoodProducer, 
-    ω::Float64
-)
+function update_Oᵉ_kp!(kp::CapitalGoodProducer, ω::Float64)
 
     kp.Oᵉ = ω * kp.Oᵉ + (1 - ω) * (kp.O + kp.O_unmet)
     # kp.Oᵉ = ω * (kp.O * 1.1) + (1 - ω) * kp.Oᵉ

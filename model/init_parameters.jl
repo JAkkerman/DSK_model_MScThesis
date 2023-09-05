@@ -25,10 +25,10 @@
     NWₒ_cp::Float64 = 1500.               # initial level of liquid assets for cp
 
     # Init params of kp
-    A_LP_0::Float64 = 1.0                 # initial productivity level A_LP
+    A_LP_0::Float64 = 2.0                 # initial productivity level A_LP
     A_EE_0::Float64 = 1.0                 # initial productivity level A_EE
     A_EF_0::Float64 = 1.0                 # initial productivity level A_EF
-    B_LP_0::Float64 = 1.0                 # initial productivity level B_LP
+    B_LP_0::Float64 = 2.0                 # initial productivity level B_LP
     B_EE_0::Float64 = 1.0                 # initial productivity level B_EE
     B_EF_0::Float64 = 1.0                 # initial productivity level B_EF
 

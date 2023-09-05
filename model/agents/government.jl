@@ -174,12 +174,7 @@ end
 """
 Lets government receive income tax from employers
 """
-function receive_incometax_gov!(
-    government::Government,
-    incometax::Float64,
-    t::Int64
-)
-
+function receive_incometax_gov!(government::Government, incometax, t)
     government.rev_incometax[t] += incometax
 end
 

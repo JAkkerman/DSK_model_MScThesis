@@ -135,6 +135,10 @@ function aggregate_data(model::ABM)
         total_profits_cp,
         total_profits_kp,
         total_profits_ep,
+        avg_labor_income_hh,
+        avg_capital_income_hh,
+        avg_ub_income_hh,
+        avg_socben_income_hh,
         quarterly_GDP_growth,
         annual_GDP_growth,
         LIS,
@@ -153,9 +157,9 @@ function aggregate_data(model::ABM)
         markup_kp,
 
         # Spending data
-        planned_consumption,
-        actual_consumption,
-        unspend_consumption,
+        total_planned_consumption,
+        total_actual_consumption,
+        total_unspend_consumption,
         total_investments,
         total_wagespending,
         unsat_consumer_demand,
@@ -164,10 +168,12 @@ function aggregate_data(model::ABM)
 
         # Investments
         RD_total,
-        expans_inv_desired_avg,
-        expans_inv_ordered_avg,
-        repl_inv_desired_avg,
-        repl_inv_ordered_avg,
+        total_expand_inv_ordered,
+        avg_expans_inv_desired,
+        avg_expans_inv_ordered,
+        total_repl_inv_ordered,
+        avg_repl_inv_desired,
+        avg_repl_inv_ordered,
 
         # Labor market
         labor_offered,
@@ -218,7 +224,7 @@ function aggregate_data(model::ABM)
         avg_prod_exp_cp,
         avg_demand_cp,
         avg_unmet_demand_cp,
-        avg_exp_demand_cp,
+        avg_demand_exp_cp,
         avg_prod_kp,
 
         # Bankrupties
@@ -300,9 +306,9 @@ Agent spending data during period
 """
 
 # Household consumption
-planned_consumption(model) = sum(hh_id -> model[hh_id].C, model.all_hh)
-actual_consumption(model) = sum(hh_id -> model[hh_id].C_actual, model.all_hh)
-unspend_consumption(model) = (1 - sum(hh_id -> model[hh_id].C_actual, model.all_hh) 
+total_planned_consumption(model) = sum(hh_id -> model[hh_id].C, model.all_hh)
+total_actual_consumption(model) = sum(hh_id -> model[hh_id].C_actual, model.all_hh)
+total_unspend_consumption(model) = (1 - sum(hh_id -> model[hh_id].C_actual, model.all_hh) 
                               / sum(hh_id -> model[hh_id].C, model.all_hh))
 
 total_investments(model) = sum(cp_id -> model[cp_id].curracc.TCI, model.all_cp)
@@ -374,10 +380,12 @@ Investments
 RD_total(model) = model.t > 0 ? sum(kp_id -> model[kp_id].RD, model.all_kp) + model.ep.RD_ep[model.t] : 0.
 
 # Desired and ordered machines
-expans_inv_desired_avg(model) = mean(cp_id -> model[cp_id].EIᵈ, model.all_cp)
-expans_inv_ordered_avg(model) = mean(cp_id -> model[cp_id].n_mach_ordered_EI, model.all_cp)
-repl_inv_desired_avg(model) = mean(cp_id -> model[cp_id].RSᵈ, model.all_cp)
-repl_inv_ordered_avg(model) = mean(cp_id -> model[cp_id].n_mach_ordered_RS, model.all_cp)
+total_expand_inv_ordered(model) = sum(cp_id -> model[cp_id].n_mach_ordered_EI, model.all_cp)
+avg_expans_inv_desired(model) = mean(cp_id -> model[cp_id].EIᵈ, model.all_cp)
+avg_expans_inv_ordered(model) = mean(cp_id -> model[cp_id].n_mach_ordered_EI, model.all_cp)
+total_repl_inv_ordered(model) = sum(cp_id -> model[cp_id].n_mach_ordered_RS, model.all_cp)
+avg_repl_inv_desired(model) = mean(cp_id -> model[cp_id].RSᵈ, model.all_cp)
+avg_repl_inv_ordered(model) = mean(cp_id -> model[cp_id].n_mach_ordered_RS, model.all_cp)
 
 
 """
@@ -408,7 +416,7 @@ avg_prod_cp(model) = mean(cp_id -> model[cp_id].Q[end], model.all_cp)
 avg_prod_exp_cp(model) = mean(cp_id -> model[cp_id].Qᵉ, model.all_cp)
 avg_demand_cp(model) = mean(cp_id -> model[cp_id].D[end], model.all_cp)
 avg_unmet_demand_cp(model) = mean(cp_id -> model[cp_id].Dᵁ[end], model.all_cp)
-avg_exp_demand_cp(model)= mean(cp_id -> model[cp_id].Dᵉ, model.all_cp)
+avg_demand_exp_cp(model)= mean(cp_id -> model[cp_id].Dᵉ, model.all_cp)
 
 avg_prod_kp(model) = mean(kp_id -> model[kp_id].Q[end], model.all_kp)
 
@@ -546,7 +554,7 @@ function update_macro_timeseries(bankrupt_cp, bankrupt_kp, model::ABM,)
     # model.macroeconomy.avg_Du_cp[t] = mean(cp_id -> model[cp_id].Dᵁ[end], all_cp)
     # model.macroeconomy.avg_De_cp[t] = mean(cp_id -> model[cp_id].Dᵉ, all_cp)
 
-    # compute_bankrupties!(bankrupt_cp, bankrupt_kp, model)
+    compute_bankrupties!(bankrupt_cp, bankrupt_kp, model)
 
     # compute_unsatisfied_demand(model)
 

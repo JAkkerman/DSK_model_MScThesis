@@ -94,7 +94,7 @@ end
 """
 Loop over workers and pay out wage.
 """
-function pay_workers_p!(p::Producer, government::Government, t::Int, model::ABM)
+function pay_workers_p!(p::Producer, model::ABM)
 
     total_wage = 0.0
     total_incometax = 0.0
@@ -102,11 +102,11 @@ function pay_workers_p!(p::Producer, government::Government, t::Int, model::ABM)
     for hh_id in p.employees
         wage = model[hh_id].w[end] * model[hh_id].L
         total_wage += wage
-        total_incometax += government.τᴵ * wage
-        receiveincome_hh!(model[hh_id], wage * (1 - government.τᴵ))
+        total_incometax += model.gov.τᴵ * wage
+        receiveincome_hh!(model[hh_id], wage * (1 - model.gov.τᴵ))
     end
     
-    receive_incometax_gov!(government, total_incometax, t)
+    receive_incometax_gov!(model.gov, total_incometax, model.t)
     p.curracc.TCL = total_wage
 end
 

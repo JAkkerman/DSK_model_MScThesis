@@ -1,15 +1,15 @@
 """
 BALANCE SHEET
 """
-@with_kw mutable struct Balance
+@with_kw mutable struct Balance{F <: Float64}
     # Assets
-    N::Float64 = 0.0            # Inventories
-    K::Float64 = 0.0            # Capital
-    NW::Float64 = 0.0           # Liquid assets
+    N::F = 0.            # Inventories
+    K::F = 0.            # Capital
+    NW::F = 0.           # Liquid assets
 
     # Liabilities
-    debt::Float64 = 0.0         # Debt
-    EQ::Float64 = 0.0           # Equity
+    debt::F = 0.         # Debt
+    EQ::F = 0.           # Equity
 end
 
 

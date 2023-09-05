@@ -1,4 +1,4 @@
-@with_kw mutable struct Household <: AbstractAgent
+@with_kw mutable struct Household{I <: Int64, F <: Float64} <: AbstractAgent
 
     id :: Int64                                 # global id
 
@@ -25,10 +25,10 @@
     # Consumption parameters and variables
     α::Float64                                 # Household's consumption fraction of wealth
     β::Float64                                 # Household's discount factor
-    C::Float64 = 0.0                           # consumption budget
-    C_actual::Float64 = 0.0                    # actual spending on consumption goods
-    P̄::Float64 = 1.0                           # weighted average price of cp
-    P̄ᵉ::Float64 = 1.0                          # expected weighted average price of cp
+    C::Float64 = 0.                            # consumption budget
+    C_actual::Float64 = 0.                     # actual spending on consumption goods
+    P̄::Float64 = 1.                            # weighted average price of cp
+    P̄ᵉ::Float64 = 1.                           # expected weighted average price of cp
 
     # Expected income sources
     EYL_t::Float64 = L * skill                  # expected labor income
@@ -148,15 +148,27 @@ function compute_consumption_budget_hh!(
             # W_scaled = W_scaled_min + (W_scaled_max - W_scaled_min) * (hh.W̃ - W̃min) / (W̃max - W̃min)
 
             # Compute optimal propensity to consume
-            compute_α!(hh, globalparam, ERt, W̃min, W̃med)
+            # compute_α!(hh, globalparam, ERt, W̃min, W̃med)
             # hh.α = 1.
+            if hh.employed
+                hh.α = 0.9
+            else
+                hh.α = 0.95
+            end
 
             # Set consumption budget
             hh.C = hh.α * hh.W
-        end
 
-        # # Compute savings rate
-        # hh.s = hh.total_I > 0 ? (hh.total_I - hh.C) / (hh.total_I) : 0.0 
+            ω = 0.99
+            s_target = 0.05
+
+            if hh.C != 0.
+                hh.C = ω * hh.C + (1 - ω) * ((1 - s_target) * hh.total_I)
+            else
+                hh.C = (1 - s_target) * hh.total_I
+            end
+            hh.C = min(hh.C, hh.W)
+        end
     else
         hh.C = 0.0
         # hh.s = 0.0
